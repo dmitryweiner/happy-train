@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.5, maximum-scale=2.0">
+    <title>Happy train</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="mobile-warning">Warning! This game is optimized for desktop browser ONLY.</div>
+    <div id="game-title-container">
+        <h1 id="game-title">HAPPY TRAIN</h1>
+    </div>
+    
+    <!-- Welcome Screen with Instructions -->
+    <div id="welcome-screen">
+        <div id="instructions-container">
+            <h2>HOW TO PLAY</h2>
+            <div id="instructions-content">
+                <p>• Control the train by switching track switches</p>
+                <p>• Click on switches <img src="assets/switch.png" width="32"/> to change direction</p>
+                <p>• Control semaphores <img src="assets/semaphore.png" width="32"/> to stop the train</p>
+                <p>• Avoid derail!</p>
+                <p>• Deliver the train to its destination <img src="assets/station.png" width="32"/></p>
+            </div>
+            <button id="start-game-btn" class="play-button">PLAY</button>
+        </div>
+    </div>
+    <div id="game-container" style="display: none;">
+        <div id="level-display">Level #1</div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameOver" style="display: none;">
+            <h2>GAME OVER!</h2>
+            <p>Wanna play again?</p>
+            <button id="playAgain">Play</button>
+        </div>
+        <div id="levelComplete" style="display: none;">
+            <h2>LEVEL COMPLETE!</h2>
+            <p>Well done! Moving to the next level...</p>
+            <button id="nextLevel">Next Level</button>
+        </div>
+        <div id="gameWin" style="display: none;">
+            <h2>YOU ARE WINNER!</h2>
+            <p>Congratulations! You've completed all levels!</p>
+            <img src="assets/winner.gif" />
+            <button id="playAgainWin">Play Again</button>
+        </div>
+    </div>
+    <footer id="footer">
+        <p>
+            <a href="https://github.com/dmitryweiner/" target="_blank">&copy; Dmitry Weiner</a> | 
+            <a href="https://github.com/dmitryweiner/neural-things/tree/main/train-game" target="_blank">Source Code</a>
+        </p>
+    </footer>
+    <script src="constants.js"></script>
+    <script src="storage.js"></script>
+    <script src="levels.js"></script>
+    <script src="utils.js"></script>
+    <script src="graphics.js"></script>
+    <script src="game.js"></script>
+</body>
+</html> 

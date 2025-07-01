@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Train - Level Editor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="editor.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="editor-container">
+        <div id="editor-header">
+            <h1>LEVEL EDITOR</h1>
+            <div id="editor-controls">
+                <button id="clear-grid" class="control-button">Clear Grid</button>
+                <button id="load-level" class="control-button">Load Level</button>
+                <button id="save-level" class="control-button">Save Level</button>
+            </div>
+        </div>
+        
+        <div id="editor-main">
+            <div id="toolbar">
+                <h3>Tools</h3>
+                
+                <div class="tool-category">
+                    <h4>Tracks</h4>
+                    <div class="tool-grid">
+                        <div class="tool-item" data-type="track" data-value=" " title="Empty">
+                            <div class="tool-preview empty-cell"></div>
+                            <span>Empty</span>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="-" title="Horizontal Track">
+                            <div class="tool-preview">-</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="|" title="Vertical Track">
+                            <div class="tool-preview">|</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┼" title="Cross Track">
+                            <div class="tool-preview">┼</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┌" title="Turn Left-Down">
+                            <div class="tool-preview">┌</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┐" title="Turn Right-Down">
+                            <div class="tool-preview">┐</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="└" title="Turn Left-Up">
+                            <div class="tool-preview">└</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┘" title="Turn Right-Up">
+                            <div class="tool-preview">┘</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-category">
+                    <h4>Switches</h4>
+                    <div class="tool-grid">
+                        <div class="tool-item" data-type="track" data-value="┐|" title="Switch Right-Down-V">
+                            <div class="tool-preview">┐|</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="|┌" title="Switch Left-Down-V">
+                            <div class="tool-preview">|┌</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┘|" title="Switch Left-Up-V">
+                            <div class="tool-preview">┘|</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="|└" title="Switch Right-Up-V">
+                            <div class="tool-preview">|└</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┐-" title="Switch Right-Down-H">
+                            <div class="tool-preview">┐-</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="-┌" title="Switch Left-Down-H">
+                            <div class="tool-preview">-┌</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="┘-" title="Switch Left-Up-H">
+                            <div class="tool-preview">┘-</div>
+                        </div>
+                        <div class="tool-item" data-type="track" data-value="-└" title="Switch Right-Up-H">
+                            <div class="tool-preview">-└</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-category">
+                    <h4>Objects</h4>
+                    <div class="tool-grid">
+                        <div class="tool-item" data-type="semaphore" title="Semaphore">
+                            <img src="assets/semaphore.png" alt="Semaphore" class="tool-icon">
+                            <span>Semaphore</span>
+                        </div>
+                        <div class="tool-item" data-type="station" title="Station">
+                            <img src="assets/station.png" alt="Station" class="tool-icon">
+                            <span>Station</span>
+                        </div>
+                        <div class="tool-item" data-type="locomotive" title="Locomotive">
+                            <img src="assets/locomotive.png" alt="Locomotive" class="tool-icon">
+                            <span>Locomotive</span>
+                        </div>
+                        <div class="tool-item" data-type="wagon1" title="Wagon 1">
+                            <img src="assets/wagon1.png" alt="Wagon 1" class="tool-icon">
+                            <span>Wagon 1</span>
+                        </div>
+                        <div class="tool-item" data-type="wagon2" title="Wagon 2">
+                            <img src="assets/wagon2.png" alt="Wagon 2" class="tool-icon">
+                            <span>Wagon 2</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="editor-workspace">
+                <div id="game-area">
+                    <canvas id="editorCanvas" width="600" height="400"></canvas>
+                </div>
+                
+                <div id="config-area">
+                    <h3>Level Configuration</h3>
+                    <textarea id="level-config" placeholder="Level configuration will appear here..."></textarea>
+                    <div id="config-controls">
+                        <button id="import-config" class="control-button">Import</button>
+                        <button id="export-config" class="control-button">Export</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="constants.js"></script>
+    <script src="utils.js"></script>
+    <script src="graphics.js"></script>
+    <script src="editor.js"></script>
+</body>
+</html> 
