@@ -6,7 +6,7 @@ if (typeof window === 'undefined') {
   globalThis.DIRECTIONS = DIRECTIONS;
 }
 
-const EPSILON = 0.1;
+const EPSILON = 0.15;
 
 const normalizeAngle = angle => ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 
