@@ -79,7 +79,7 @@ describe('Switch Movement Calculation', () => {
         CELL_TYPES.SWITCH_RIGHT_UP_V,
         5, 5,
         5.5 * CELL_SIZE, 5.5 * CELL_SIZE,
-        DIRECTIONS.right, // Approaching from side (not back)
+        DIRECTIONS.left, // Approaching from side (not back)
         1.0,
         0.1,
         CELL_SIZE,
@@ -87,7 +87,7 @@ describe('Switch Movement Calculation', () => {
       );
       
       // Direction should change when turning
-      expect(Math.abs(result.direction - DIRECTIONS.right)).toBeGreaterThan(0.05);
+      expect(Math.abs(result.direction - DIRECTIONS.left)).toBeGreaterThan(0.05);
     });
 
     test('horizontal switch should turn when in turning state and not approaching from back', () => {
@@ -95,7 +95,7 @@ describe('Switch Movement Calculation', () => {
         CELL_TYPES.SWITCH_RIGHT_UP_H,
         5, 5,
         5.5 * CELL_SIZE, 5.5 * CELL_SIZE,
-        DIRECTIONS.up, // Approaching from vertical (not back)
+        DIRECTIONS.down, // Approaching from vertical (not back)
         1.0,
         0.1,
         CELL_SIZE,
@@ -103,7 +103,7 @@ describe('Switch Movement Calculation', () => {
       );
       
       // Direction should change when turning
-      expect(Math.abs(result.direction - DIRECTIONS.up)).toBeGreaterThan(0.05);
+      expect(Math.abs(result.direction - DIRECTIONS.down)).toBeGreaterThan(0.05);
     });
   });
 

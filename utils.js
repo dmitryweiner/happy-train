@@ -271,23 +271,30 @@ function calculateStraightPosition(cellType, pixelX, pixelY, direction, speed, d
   if (cellType === CELL_TYPES.RAIL_H || 
       (cellType.includes("-") && isSwitchCell(cellType))) {
     // Если на горизонтальных рельсах, "прилипаем" к горизонтальному движению
-    nextDirection = Math.cos(normalizedCurrentAngle) > 0 ? DIRECTIONS.right : DIRECTIONS.left;
+    if (closeTo(normalizedCurrentAngle, DIRECTIONS.right) || closeTo(normalizedCurrentAngle, 2 * Math.PI)) {
+      nextDirection = DIRECTIONS.right;
+    } else if (closeTo(normalizedCurrentAngle, DIRECTIONS.left)) {
+      nextDirection = DIRECTIONS.left;
+    }
   } else if (cellType === CELL_TYPES.RAIL_V || 
             (cellType.includes("|") && isSwitchCell(cellType))) {
     // Если на вертикальных рельсах, "прилипаем" к вертикальному движению
-    nextDirection = Math.sin(normalizedCurrentAngle) > 0 ? DIRECTIONS.down : DIRECTIONS.up;
+    if (closeTo(normalizedCurrentAngle, DIRECTIONS.down)) {
+      nextDirection = DIRECTIONS.down;
+    } else if (closeTo(normalizedCurrentAngle, DIRECTIONS.up)) {
+      nextDirection = DIRECTIONS.up;
+    }
   } else if (cellType === CELL_TYPES.RAIL_H_V) {
     // Пересечение рельсов - сохраняем текущее направление движения
     // Определяем, движется ли поезд больше горизонтально или вертикально
-    const cosValue = Math.abs(Math.cos(normalizedCurrentAngle));
-    const sinValue = Math.abs(Math.sin(normalizedCurrentAngle));
-    
-    if (cosValue > sinValue) {
-      // Движение больше горизонтальное
-      nextDirection = Math.cos(normalizedCurrentAngle) > 0 ? DIRECTIONS.right : DIRECTIONS.left;
-    } else {
-      // Движение больше вертикальное
-      nextDirection = Math.sin(normalizedCurrentAngle) > 0 ? DIRECTIONS.down : DIRECTIONS.up;
+    if (closeTo(normalizedCurrentAngle, DIRECTIONS.right) || closeTo(normalizedCurrentAngle, 2 * Math.PI)) {
+      nextDirection = DIRECTIONS.right;
+    } else if (closeTo(normalizedCurrentAngle, DIRECTIONS.left)) {
+      nextDirection = DIRECTIONS.left;
+    } else if (closeTo(normalizedCurrentAngle, DIRECTIONS.down)) {
+      nextDirection = DIRECTIONS.down;
+    } else if (closeTo(normalizedCurrentAngle, DIRECTIONS.up)) {
+      nextDirection = DIRECTIONS.up;
     }
   }
 
