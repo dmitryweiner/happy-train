@@ -9,6 +9,7 @@ class Game {
     this.playAgainButton = document.getElementById("playAgain");
     this.nextLevelButton = document.getElementById("nextLevel");
     this.playAgainWinButton = document.getElementById("playAgainWin");
+    this.startOverButton = document.getElementById("startOver");
     this.levelDisplay = document.getElementById("level-display");
 
     this.currentLevelIndex = this.loadCurrentLevel(); // Load saved level or start from 0
@@ -49,7 +50,13 @@ class Game {
     this.levelDisplay.textContent = `Level #${this.currentLevelIndex + 1}`;
   }
 
-  initGame() {
+  initGame(resetToFirstLevel = false) {
+    // If resetToFirstLevel is true, reset to first level
+    if (resetToFirstLevel) {
+      this.currentLevelIndex = 0;
+      this.clearSavedLevel();
+    }
+    
     // Load level data (use current level)
     const currentLevel = levels[this.currentLevelIndex];
     
@@ -158,6 +165,12 @@ class Game {
       // Hide game over screen
       this.gameOverScreen.style.display = "none";
       this.initGame();
+    });
+    
+    this.startOverButton.addEventListener("click", () => {
+      // Hide game over screen
+      this.gameOverScreen.style.display = "none";
+      this.initGame(true);
     });
     
     this.nextLevelButton.addEventListener("click", () => {

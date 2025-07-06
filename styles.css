@@ -237,6 +237,32 @@ body {
     box-shadow: 0 0 0 #2e7d32, 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
+#startOver {
+    font-family: 'Press Start 2P', cursive;
+    padding: 15px 40px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #f44336;
+    color: white;
+    border: 3px solid #333;
+    border-radius: 10px;
+    text-shadow: 1px 1px 0 #c62828;
+    box-shadow: 0 4px 0 #c62828, 0 6px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.1s ease;
+    margin-top: 10px;
+}
+
+#startOver:hover {
+    background-color: #e53935;
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #c62828, 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#startOver:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 #c62828, 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
 #nextLevel {
     font-family: 'Press Start 2P', cursive;
     padding: 12px 25px;
