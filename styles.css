@@ -299,17 +299,52 @@ body {
     padding: 15px;
     background-color: #ff9800;
     color: #fff;
-    text-align: center;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
     font-weight: bold;
     z-index: 1000;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     border-radius: 8px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#mobile-warning span {
+    flex: 1;
+    text-align: center;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+    line-height: 1;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+.close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.close-btn:active {
+    background-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Отображаем предупреждение только на экранах меньше 900px */
 @media screen and (max-width: 900px) {
     #mobile-warning {
-        display: block;
+        display: flex;
     }
     
     body {

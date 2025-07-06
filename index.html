@@ -10,7 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="mobile-warning">Warning! This game is optimized for desktop browser ONLY.</div>
+    <div id="mobile-warning">
+        <span>Warning! This game is optimized for desktop browser ONLY.</span>
+        <button id="close-warning" class="close-btn">&times;</button>
+    </div>
     <div id="game-title-container">
         <h1 id="game-title">HAPPY TRAIN</h1>
     </div>
@@ -61,5 +64,16 @@
     <script src="utils.js"></script>
     <script src="graphics.js"></script>
     <script src="game.js"></script>
+    
+    <script>
+        // Mobile warning close functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileWarning = document.getElementById('mobile-warning');
+            const closeWarningBtn = document.getElementById('close-warning');
+            closeWarningBtn.addEventListener('click', function() {
+                mobileWarning.style.display = 'none';
+            });
+        });
+    </script>
 </body>
 </html> 
