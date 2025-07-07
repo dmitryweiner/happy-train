@@ -39,7 +39,7 @@ function seededRandom(seed) {
 }
 
 // Генерация единого фонового изображения для всей игры
-function generateBackground(canvas, grid) {
+function generateBackground(canvas, grid, shouldDrawEmoji = true) {
   // Создаем отдельный canvas для фона
   let backgroundCanvas;
   if (typeof document !== 'undefined') {
@@ -83,20 +83,22 @@ function generateBackground(canvas, grid) {
     bgCtx.fill();
   }
 
-  for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
-      if (grid[y][x] === CELL_TYPES.EMPTY) {
-        const objects = ['🏔️', '🌋', '🌲', '🌳', '🌾', '🌵', '🌱', '☘️', '🌿', '🏕️', '🛖', '🌼'];
-        const randomObject = objects[Math.floor(Math.random() * objects.length)];
-        const shouldDrawObject = Math.random() < NATURE_OBJECT_PROBABILITY;
-        if (shouldDrawObject) {
-          const centerX = x * CELL_SIZE + CELL_SIZE / 2;
-          const centerY = y * CELL_SIZE + CELL_SIZE / 2;        
-          bgCtx.fillStyle = COLORS.BLACK;
-          bgCtx.font = "20px Arial";
-          bgCtx.textAlign = "center";
-          bgCtx.textBaseline = "middle";
-          bgCtx.fillText(randomObject, centerX, centerY);
+  if (shouldDrawEmoji) {
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] === CELL_TYPES.EMPTY) {
+          const objects = ['🏔️', '🌋', '🌲', '🌳', '🌾', '🌵', '🌱', '☘️', '🌿', '🏕️', '🛖', '🌼'];
+          const randomObject = objects[Math.floor(Math.random() * objects.length)];
+          const shouldDrawObject = Math.random() < NATURE_OBJECT_PROBABILITY;
+          if (shouldDrawObject) {
+            const centerX = x * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = y * CELL_SIZE + CELL_SIZE / 2;        
+            bgCtx.fillStyle = COLORS.BLACK;
+            bgCtx.font = "20px Arial";
+            bgCtx.textAlign = "center";
+            bgCtx.textBaseline = "middle";
+            bgCtx.fillText(randomObject, centerX, centerY);
+          }
         }
       }
     }
