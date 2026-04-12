@@ -1,3 +1,7 @@
+html {
+    overflow-x: clip;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -7,8 +11,9 @@ body {
     align-items: center;
     min-height: 100vh;
     background-color: #f0f0f0;
-    overflow-x: auto;
+    overflow-x: clip;
     width: 100%;
+    max-width: 100%;
 }
 
 #game-container {
@@ -117,9 +122,38 @@ body {
     letter-spacing: 2px;
 }
 
-#gameCanvas {
+/* На десктопе не создаёт рамку — дети ведут себя как прямые потомки #game-container */
+#game-board-fit-outer {
+    display: contents;
+}
+
+/* Окно фиксированного размера (логический размер поля); pan/zoom только внутри #game-board-content */
+#game-board-viewport {
+    overflow: hidden;
+    margin: 0 auto;
+    align-self: center;
+    box-sizing: content-box;
     border: 2px solid #333;
+    background-color: #e8e8e8;
+    flex-shrink: 0;
+}
+
+#game-board-content {
+    display: block;
+    width: max-content;
+    transform-origin: top left;
+    touch-action: none;
+    cursor: grab;
+}
+
+#game-board-content:active {
+    cursor: grabbing;
+}
+
+#gameCanvas {
+    display: block;
     background-color: #fff;
+    cursor: inherit;
 }
 
 #gameOver {
@@ -369,48 +403,115 @@ body {
 
 /* Отображаем предупреждение только на экранах меньше 900px */
 @media screen and (max-width: 900px) {
-    #mobile-warning {
-        display: flex;
+    html {
+        overflow-x: hidden;
+        overscroll-behavior-x: none;
     }
-    
+
     body {
         padding-top: 50px; /* Добавляем отступ сверху, чтобы предупреждение не перекрывало контент */
         align-items: flex-start; /* Меняем выравнивание для возможности прокрутки */
         padding-bottom: 20px; /* Добавляем отступ снизу для лучшей видимости при прокрутке */
         justify-content: center; /* Center content horizontally */
         padding-left: 0; /* Remove left padding since we're centering */
-        overflow-x: hidden; /* Предотвращаем горизонтальную прокрутку */
+        overflow-x: hidden;
+        overscroll-behavior-x: none;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* При flex-start колонка иначе сжимается к max-content (~ширина поля) */
+    #game-title-container,
+    #welcome-screen,
+    #game-container,
+    #footer {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
     
     #game-container {
         margin-top: 20px; /* Добавляем отступ сверху для контейнера игры */
-        max-width: 100vw; /* Используем всю ширину viewport */
+        min-width: 0; /* иначе flex даёт min-content по широким детям и ломает узкий экран */
         margin-left: auto; /* Center the container */
         margin-right: auto; /* Center the container */
-        padding: 0 10px; /* Небольшие отступы по бокам */
+        padding: 0; /* поле на всю ширину колонки; воздух у «Level #» — у #level-display */
+        container-type: inline-size;
+        container-name: game;
+    }
+
+    #game-title-container {
+        min-width: 0;
+        padding: 0 8px;
+    }
+
+    /* fixed: без 50%+translate и без 100vw — иначе полоса скролла ломает ширину */
+    #mobile-warning {
+        display: flex;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        transform: none;
         box-sizing: border-box;
-        
-        /* Масштабируем содержимое для заполнения экрана */
-        transform-origin: top center;
-        transform: scale(calc(min(100vw - 20px, 100vh - 120px) / 600));
+    }
+
+    /*
+     * Мобильная подгонка: transform не уменьшает место в потоке, поэтому обёртка задаёт
+     * width/height = визуальный размер после scale, чтобы поле целиком влезало в экран.
+     * 604×404 = 600×400 поле + рамка 2px (content-box).
+     * 100cqw — ширина #game-container (inline-size), без лишнего 100vw при скроллбаре.
+     */
+    #game-board-fit-outer {
+        display: block;
+        /* 100% = ширина #game-container (без бокового padding — поле на всю колонку) */
+        /* Деление только на *px*, иначе min() смешивает «1» (число) с длиной — scale() игнорирует transform */
+        --board-fit: min(1, calc(100% / 604px), calc((100vh - 120px) / 404px));
+        width: calc(604px * var(--board-fit));
+        height: calc(404px * var(--board-fit));
+        max-width: 100%;
+        min-width: 0;
+        margin: 0 auto;
+        align-self: center;
+        overflow: hidden;
+        flex-shrink: 1;
+    }
+
+    @supports (width: 1cqw) {
+        #game-board-fit-outer {
+            --board-fit: min(1, calc(100cqw / 604px), calc((100vh - 120px) / 404px));
+        }
+    }
+
+    #game-board-viewport {
+        /* Без max-width: иначе layout ~404px, а scale считают от 604px — после scale остаётся пустота по бокам */
+        max-width: none;
+        /* top center сдвигает визуально масштабированное поле вправо — слева серая подложка viewport */
+        transform-origin: top left;
+        transform: scale(var(--board-fit));
     }
     
     #gameCanvas {
         display: block;
-        margin: 0 auto;
-        max-width: 100%;
+        max-width: none;
         height: auto;
     }
     
     #level-display {
         font-size: 14px; /* Уменьшаем размер шрифта на мобильных */
         margin-bottom: 10px;
+        margin-left: 10px;
+        margin-right: 10px;
         padding: 8px 16px;
+        max-width: 100%;
+        box-sizing: border-box;
     }
     
     /* Адаптируем размеры модальных окон */
     #gameOver, #levelComplete, #gameWin {
-        max-width: 90vw;
+        max-width: min(100% - 20px, 34rem);
         padding: 20px;
         box-sizing: border-box;
     }
@@ -425,7 +526,7 @@ body {
     
     /* Адаптируем инструкции */
     #instructions-container {
-        max-width: 90vw;
+        max-width: min(100% - 20px, 34rem);
         padding: 20px;
         box-sizing: border-box;
     }
@@ -481,6 +582,7 @@ body {
     #footer {
         margin-top: 20px;
         padding: 15px;
+        box-sizing: border-box;
     }
     
     #footer p {

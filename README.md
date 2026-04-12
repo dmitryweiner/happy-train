@@ -29,6 +29,7 @@ Happy Train is a browser-based puzzle game that combines strategic thinking with
 ## 🕹️ How to Play
 
 ### Controls
+- **Scroll wheel** (or pinch on touch) on the game board to zoom the picture inside the fixed field window (about **100%–300%**); **drag** to pan when zoomed in
 - **Click switches** ![Switch](assets/switch.png) to change track directions
 - **Click semaphores** ![Semaphore](assets/semaphore.png) to stop/start trains
 - **Click level number** to pause/unpause the game
@@ -59,21 +60,32 @@ Happy Train is a browser-based puzzle game that combines strategic thinking with
 3. Click "PLAY" to start the game
 
 ### Development Setup
+
+The repo pins **Node.js 22** in [`.node-version`](.node-version) so the native `canvas` dev dependency can use a [prebuilt binary](https://github.com/Automattic/node-canvas/releases) on common platforms (including darwin arm64) instead of compiling Cairo. With [fnm](https://github.com/Schniz/fnm):
+
 ```bash
-# Install dependencies
+cd /path/to/happy-train
+fnm install   # reads .node-version
+fnm use
+node -v      # should print v22.x matching .node-version
+
 yarn install
-
-# Run tests
 yarn test
+```
 
-# Run visual tests
-yarn test:visual
+`package.json` declares `"engines": { "node": ">=22.0.0 <23" }` and uses **`canvas` v3**, which ships prebuilt binaries for Node 22 on darwin arm64 (so you usually do not need Homebrew Cairo). If `yarn install` still tries to compile from source and fails, install system libraries then reinstall, for example on macOS:
+
+```bash
+brew install pkg-config cairo pango libpng jpeg giflib librsvg pixman
+rm -rf node_modules && yarn install
 ```
 
 ## 🛠️ Project Structure
 
 ```
 happy-train/
+├── .node-version       # Node 22 pin for fnm / asdf
+├── .nvmrc              # Same version for nvm (`nvm use`)
 ├── index.html          # Main game file
 ├── editor.html         # Level editor
 ├── game.js            # Core game logic

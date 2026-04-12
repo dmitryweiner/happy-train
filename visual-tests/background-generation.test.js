@@ -28,8 +28,8 @@ describe('Background Generation Tests', () => {
     const canvas = createCanvas(canvasWidth, canvasHeight);
     
     // Генерируем фон
-    const backgroundCanvas = generateBackground(canvas, grid);
-    
+    const backgroundCanvas = generateBackground(canvas, grid, false);
+
     // Проверяем, что размеры соответствуют исходному canvas
     expect(backgroundCanvas.width).toBe(canvasWidth);
     expect(backgroundCanvas.height).toBe(canvasHeight);
@@ -49,7 +49,7 @@ describe('Background Generation Tests', () => {
     for (const size of sizes) {
       const canvas = createCanvas(size.width, size.height);
       const grid = createGrid(size.x, size.y, CELL_TYPES.EMPTY);
-      const backgroundCanvas = generateBackground(canvas, grid);
+      const backgroundCanvas = generateBackground(canvas, grid, false);
       
       // Проверяем размер
       expect(backgroundCanvas.width).toBe(size.width);
@@ -71,8 +71,8 @@ describe('Background Generation Tests', () => {
     const canvas = createCanvas(canvasWidth, canvasHeight);
     const grid = createGrid(4, 4, CELL_TYPES.EMPTY);
     
-    const backgroundCanvas = generateBackground(canvas, grid);
-    
+    const backgroundCanvas = generateBackground(canvas, grid, false);
+
     // Проверяем пиксели на границах ячеек, они должны быть цвета сетки
     const ctx = backgroundCanvas.getContext('2d');
     const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);

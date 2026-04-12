@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "A simple train game with canvas",
   "main": "game.js",
+  "engines": {
+    "node": ">=22.0.0 <23"
+  },
   "scripts": {
     "test": "yarn test:unit && yarn test:visual",
     "test:unit": "jest tests/*",
@@ -10,13 +13,10 @@
     "test:visual:update": "rm -rf visual-tests/fixtures && jest visual-tests/*"
   },
   "jest": {
-    "testEnvironment": "node",
-    "setupFiles": ["./visual-tests/setup.js"]
-  },
-  "dependencies": {
-    "canvas": "^2.11.2"
+    "testEnvironment": "node"
   },
   "devDependencies": {
+    "canvas": "^3.0.0",
     "jest": "^29.5.0",
     "pngjs": "^7.0.0",
     "pixelmatch": "^5.3.0"

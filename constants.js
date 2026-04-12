@@ -52,6 +52,13 @@ const STORAGE_KEYS = {
   CURRENT_LEVEL: 'trainGameCurrentLevel',
 };
 
+// View zoom (CSS scale on canvas; train logic unchanged)
+const VIEW_ZOOM_MIN = 1;
+const VIEW_ZOOM_MAX = 3;
+const VIEW_ZOOM_WHEEL_SENSITIVITY = 0.0015;
+const VIEW_PINCH_RATIO_THRESHOLD = 0.04;
+const VIEW_DRAG_THRESHOLD_PX = 6;
+
 if (typeof module !== 'undefined' && module.exports) {
 module.exports = {
   CELL_SIZE,
@@ -67,5 +74,10 @@ module.exports = {
   DIRECTIONS,
   LOCOMOTIVE_STATES,
   STORAGE_KEYS,
+  VIEW_ZOOM_MIN,
+  VIEW_ZOOM_MAX,
+  VIEW_ZOOM_WHEEL_SENSITIVITY,
+  VIEW_PINCH_RATIO_THRESHOLD,
+  VIEW_DRAG_THRESHOLD_PX,
   }; 
 }

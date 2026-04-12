@@ -1,6 +1,9 @@
 class Game {
   constructor() {
     this.canvas = document.getElementById("gameCanvas");
+    this.boardViewport = document.getElementById("game-board-viewport");
+    this.boardTransformRoot =
+      document.getElementById("game-board-content") || this.canvas;
     this.ctx = this.canvas.getContext("2d");
     this.gameOverScreen = document.getElementById("gameOver");
     this.levelCompleteScreen = document.getElementById("levelComplete");
@@ -16,6 +19,17 @@ class Game {
     this.lastTime = performance.now();
     this.isPaused = false; // Add pause state
     this.setupCanvas();
+    this.viewZoom = 1;
+    this.viewPanX = 0;
+    this.viewPanY = 0;
+    this._pinchStartDistance = 0;
+    this._pinchStartZoom = 1;
+    this._pinchSuppressedToggle = false;
+    this._touchGestureMultifinger = false;
+    this._activePanPointerId = null;
+    this._panPointerDown = false;
+    this._panDragCommitted = false;
+    this._suppressNextClick = false;
     this.initGame();
     this.setupEventListeners();
     this.gameLoop(performance.now());
@@ -44,6 +58,38 @@ class Game {
   setupCanvas() {
     this.canvas.width = GRID_WIDTH * CELL_SIZE;
     this.canvas.height = GRID_HEIGHT * CELL_SIZE;
+    if (this.boardViewport) {
+      this.boardViewport.style.boxSizing = "content-box";
+      this.boardViewport.style.width = `${GRID_WIDTH * CELL_SIZE}px`;
+      this.boardViewport.style.height = `${GRID_HEIGHT * CELL_SIZE}px`;
+    }
+  }
+
+  setViewZoom(zoom) {
+    this.viewZoom = clampViewZoom(zoom, VIEW_ZOOM_MIN, VIEW_ZOOM_MAX);
+    this.applyViewTransform();
+  }
+
+  applyViewTransform() {
+    this.viewZoom = clampViewZoom(this.viewZoom, VIEW_ZOOM_MIN, VIEW_ZOOM_MAX);
+    const vw = this.boardViewport ? this.boardViewport.clientWidth : 0;
+    const vh = this.boardViewport ? this.boardViewport.clientHeight : 0;
+    const panBounds = computeViewPanBounds(
+      this.canvas.width,
+      this.canvas.height,
+      this.viewZoom,
+      vw,
+      vh
+    );
+    const clamped = clampViewPanPair(this.viewPanX, this.viewPanY, panBounds);
+    this.viewPanX = clamped.panX;
+    this.viewPanY = clamped.panY;
+    this.boardTransformRoot.style.transformOrigin = "top left";
+    this.boardTransformRoot.style.transform = buildCanvasViewTransform(
+      this.viewPanX,
+      this.viewPanY,
+      this.viewZoom
+    );
   }
 
   updateLevelDisplay() {
@@ -124,6 +170,10 @@ class Game {
     
     // Обновляем отображение уровня
     this.updateLevelDisplay();
+
+    this.viewPanX = 0;
+    this.viewPanY = 0;
+    this.applyViewTransform();
   }
 
 
@@ -223,13 +273,10 @@ class Game {
     // Handle both clicks and taps for switch toggling
     const handleSwitchInteraction = (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      
-      // Get coordinates (handle both mouse and touch)
+
       let clientX, clientY;
-      if (e.type === 'touchend') {
-        // Prevent mouse events from also firing
+      if (e.type === "touchend") {
         e.preventDefault();
-        // Use the last touch position
         const touch = e.changedTouches[0];
         clientX = touch.clientX;
         clientY = touch.clientY;
@@ -237,23 +284,16 @@ class Game {
         clientX = e.clientX;
         clientY = e.clientY;
       }
-      
-      // Calculate relative coordinates within the canvas element
-      const relativeX = clientX - rect.left;
-      const relativeY = clientY - rect.top;
-      
-      // Convert from displayed canvas coordinates to actual canvas coordinates
-      // rect.width/height give us the displayed size, this.canvas.width/height give us actual size
-      const scaleX = this.canvas.width / rect.width;
-      const scaleY = this.canvas.height / rect.height;
-      
-      const actualX = relativeX * scaleX;
-      const actualY = relativeY * scaleY;
-      
-      const x = Math.floor(actualX / CELL_SIZE);
-      const y = Math.floor(actualY / CELL_SIZE);
-      
-      // Check if valid grid position
+
+      const { gridX: x, gridY: y } = clientToGridCell(
+        clientX,
+        clientY,
+        rect,
+        this.canvas.width,
+        this.canvas.height,
+        CELL_SIZE
+      );
+
       if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
         const cellType = this.grid[y][x];
         if (isSwitchCell(cellType)) {
@@ -263,19 +303,168 @@ class Game {
         }
       }
     };
-    
-    // Mouse click
-    this.canvas.addEventListener("click", handleSwitchInteraction);
-    
-    // Touch events for mobile
-    this.canvas.addEventListener("touchend", handleSwitchInteraction);
-    
-    // Prevent scrolling/zooming when touching the canvas on mobile
-    this.canvas.addEventListener("touchstart", (e) => {
-      if (e.touches.length === 1) {
+
+    this.canvas.addEventListener("click", (e) => {
+      if (this._suppressNextClick) {
+        this._suppressNextClick = false;
         e.preventDefault();
+        e.stopPropagation();
+        return;
       }
-    }, { passive: false });
+      handleSwitchInteraction(e);
+    });
+
+    this.canvas.addEventListener("touchend", (e) => {
+      if (e.touches.length === 0) {
+        this._touchGestureMultifinger = false;
+      }
+      if (this._pinchSuppressedToggle) {
+        if (e.touches.length === 0) {
+          this._pinchSuppressedToggle = false;
+          this._pinchStartDistance = 0;
+        }
+        e.preventDefault();
+        return;
+      }
+      if (this._suppressNextClick) {
+        this._suppressNextClick = false;
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length > 0) {
+        return;
+      }
+      this._pinchStartDistance = 0;
+      handleSwitchInteraction(e);
+    });
+
+    this.canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.touches.length >= 2) {
+          this._touchGestureMultifinger = true;
+        }
+        if (e.touches.length === 2) {
+          this._pinchStartDistance = touchPairDistance(e.touches);
+          this._pinchStartZoom = this.viewZoom;
+        }
+      },
+      { passive: true }
+    );
+
+    this.canvas.addEventListener(
+      "touchmove",
+      (e) => {
+        if (e.touches.length === 2 && this._pinchStartDistance > 0) {
+          const d = touchPairDistance(e.touches);
+          const ratio = d / this._pinchStartDistance;
+          if (Math.abs(ratio - 1) >= VIEW_PINCH_RATIO_THRESHOLD) {
+            this._pinchSuppressedToggle = true;
+          }
+          this.setViewZoom(
+            zoomFromPinchRatio(
+              this._pinchStartZoom,
+              this._pinchStartDistance,
+              d,
+              VIEW_ZOOM_MIN,
+              VIEW_ZOOM_MAX
+            )
+          );
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+
+    const onPanPointerEnd = (e) => {
+      if (e.pointerId !== this._activePanPointerId) return;
+      this._panPointerDown = false;
+      this._activePanPointerId = null;
+      try {
+        this.canvas.releasePointerCapture(e.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+      if (this._panDragCommitted) {
+        this._suppressNextClick = true;
+      }
+      this._panDragCommitted = false;
+    };
+
+    this.canvas.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (this._touchGestureMultifinger) return;
+      this._activePanPointerId = e.pointerId;
+      this._panPointerDown = true;
+      this._panDragCommitted = false;
+      this._panStartClientX = e.clientX;
+      this._panStartClientY = e.clientY;
+      this._panLastClientX = e.clientX;
+      this._panLastClientY = e.clientY;
+      try {
+        this.canvas.setPointerCapture(e.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+    });
+
+    this.canvas.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== this._activePanPointerId || !this._panPointerDown) return;
+      if (this._touchGestureMultifinger) return;
+      const vw = this.boardViewport ? this.boardViewport.clientWidth : 0;
+      const vh = this.boardViewport ? this.boardViewport.clientHeight : 0;
+      const panBounds = computeViewPanBounds(
+        this.canvas.width,
+        this.canvas.height,
+        this.viewZoom,
+        vw,
+        vh
+      );
+      if (
+        panBounds.minPanX === panBounds.maxPanX &&
+        panBounds.minPanY === panBounds.maxPanY
+      ) {
+        return;
+      }
+      if (!this._panDragCommitted) {
+        const dist = Math.hypot(
+          e.clientX - this._panStartClientX,
+          e.clientY - this._panStartClientY
+        );
+        if (dist < VIEW_DRAG_THRESHOLD_PX) return;
+        this._panDragCommitted = true;
+      }
+      this.viewPanX += e.clientX - this._panLastClientX;
+      this.viewPanY += e.clientY - this._panLastClientY;
+      this._panLastClientX = e.clientX;
+      this._panLastClientY = e.clientY;
+      this.applyViewTransform();
+    });
+
+    this.canvas.addEventListener("pointerup", onPanPointerEnd);
+    this.canvas.addEventListener("pointercancel", onPanPointerEnd);
+
+    this.canvas.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        this.setViewZoom(
+          zoomFromWheelDelta(
+            this.viewZoom,
+            e.deltaY,
+            VIEW_ZOOM_MIN,
+            VIEW_ZOOM_MAX,
+            VIEW_ZOOM_WHEEL_SENSITIVITY
+          )
+        );
+      },
+      { passive: false }
+    );
+
+    window.addEventListener("resize", () => {
+      this.applyViewTransform();
+    });
   }
 
   gameLoop(currentTime) {

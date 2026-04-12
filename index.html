@@ -34,7 +34,13 @@
     </div>
     <div id="game-container" style="display: none;">
         <div id="level-display">Level #1</div>
-        <canvas id="gameCanvas"></canvas>
+        <div id="game-board-fit-outer">
+            <div id="game-board-viewport">
+                <div id="game-board-content">
+                    <canvas id="gameCanvas"></canvas>
+                </div>
+            </div>
+        </div>
         <div id="gameOver" style="display: none;">
             <h2>GAME OVER!</h2>
             <p>Wanna play again?</p>
@@ -63,6 +69,7 @@
     <script src="storage.js"></script>
     <script src="levels.js"></script>
     <script src="utils.js"></script>
+    <script src="viewport.js"></script>
     <script src="graphics.js"></script>
     <script src="game.js"></script>
     

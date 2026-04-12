@@ -77,5 +77,5 @@ module.exports = {
   createTestCanvas() {
     return createCanvas(CELL_SIZE, CELL_SIZE);
   },
-  compareCanvasWithReference
-}; 
+  compareCanvasWithReference,
+};
