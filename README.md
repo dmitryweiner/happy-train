@@ -105,14 +105,12 @@ happy-train/
 ├── editor.html         # Level editor page (entry: src/editor/editor.ts)
 ├── src/
 │   ├── main.ts         # Game bootstrap
-│   ├── game.ts         # Core game logic
-│   ├── graphics.ts     # Rendering engine
-│   ├── levels.ts       # Level definitions
 │   ├── constants.ts    # Game constants
+│   ├── levels.ts       # Level definitions
 │   ├── types.ts        # Shared types
-│   ├── utils.ts        # Train movement
-│   ├── viewport.ts     # Zoom / pan math
-│   ├── storage.ts      # Save/load functionality
+│   ├── core/           # Simulation without DOM: world state, step, movement
+│   ├── render/         # Canvas rendering
+│   ├── ui/             # Game controller: DOM, input, zoom/pan, screens, storage
 │   └── editor/         # Level editor
 ├── styles.css         # Game styling
 ├── editor.css         # Editor styling
@@ -127,7 +125,8 @@ happy-train/
 │   ├── fog.png
 │   └── winner.gif
 ├── tests/             # Unit tests
-│   └── golden/        # Golden snapshots + frozen legacy engine
+│   ├── golden/        # Golden snapshots + frozen legacy engine
+│   └── ui/            # UI integration tests (jsdom)
 └── visual-tests/      # Visual regression tests
 ```
 

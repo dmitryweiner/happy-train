@@ -1,6 +1,6 @@
 // Вспомогательные функции для движения поезда
-import { CELL_SIZE, CELL_TYPES, DIRECTIONS, type CellType } from './constants';
-import type { GridPoint, MovementResult } from './types';
+import { CELL_SIZE, CELL_TYPES, DIRECTIONS, type CellType } from '../constants';
+import type { GridPoint, MovementResult } from '../types';
 
 // Состояние стрелки: true — прямо; undefined/null — клетка не стрелка
 export type SwitchState = boolean | null | undefined;

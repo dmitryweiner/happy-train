@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
-import { drawCell } from '../src/graphics';
+import { drawCell } from '../src/render/graphics';
 
 // Функция для создания контекста-заглушки
 function createMockContext() {

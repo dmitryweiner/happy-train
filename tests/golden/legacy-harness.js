@@ -80,6 +80,18 @@ class GameSim {
     this.reason = null;
   }
 
+  get trains() {
+    return this.game.trains;
+  }
+
+  get switchStates() {
+    return this.game.switchStates;
+  }
+
+  get semaphoreStates() {
+    return this.game.semaphoreStates;
+  }
+
   // Повторяет handleSwitchInteraction из game.js: стрелка важнее семафора.
   click(x, y) {
     const game = this.game;
@@ -159,11 +171,11 @@ class LegacySim extends GameSim {
 
 const round = (value, digits) => Number(value.toFixed(digits));
 
+// sim: GameSim или любая симуляция с полями trains / switchStates / semaphoreStates
 function traceFrame(sim) {
-  const game = sim.game;
   return {
     tick: sim.tick,
-    trains: game.trains.map(train => ({
+    trains: sim.trains.map(train => ({
       state: train[0].state,
       speed: round(train[0].speed, 3),
       parts: train.map(part => [
@@ -174,8 +186,8 @@ function traceFrame(sim) {
         round(part.direction, 3),
       ]),
     })),
-    switches: Object.fromEntries(Object.entries(game.switchStates).map(([k, v]) => [k, v.isStraight])),
-    semaphores: Object.fromEntries(Object.entries(game.semaphoreStates).map(([k, v]) => [k, v.isOpen])),
+    switches: Object.fromEntries(Object.entries(sim.switchStates).map(([k, v]) => [k, v.isStraight])),
+    semaphores: Object.fromEntries(Object.entries(sim.semaphoreStates).map(([k, v]) => [k, v.isOpen])),
   };
 }
 
@@ -186,14 +198,14 @@ function traceFrame(sim) {
  *  - events: для каждого поезда последовательность клеток локомотива с тиком входа, итог и тик итога;
  *  - trace: кадры каждые traceEvery тиков (позиции с округлением до 0.1px).
  * @param {{ level: number, maxTicks?: number, actions?: { tick: number, x: number, y: number }[] }} scenario
- * @param {{ traceEvery?: number, createSim?: (levelIndex: number) => GameSim }} [options]
+ * @param {{ traceEvery?: number, createSim?: (levelIndex: number) => any }} [options]
  */
 function runScenario(scenario, { traceEvery = 15, createSim = levelIndex => new LegacySim(levelIndex) } = {}) {
   const sim = createSim(scenario.level - 1);
   const actions = [...(scenario.actions || [])].sort((a, b) => a.tick - b.tick);
   const maxTicks = scenario.maxTicks ?? 60 * TICK_RATE;
 
-  const cells = sim.game.trains.map(train => [[train[0].x, train[0].y, 0]]);
+  const cells = sim.trains.map(train => [[train[0].x, train[0].y, 0]]);
   const trace = [traceFrame(sim)];
   let next = 0;
 
@@ -203,7 +215,7 @@ function runScenario(scenario, { traceEvery = 15, createSim = levelIndex => new 
       next++;
     }
     sim.step();
-    sim.game.trains.forEach((train, i) => {
+    sim.trains.forEach((train, i) => {
       const last = cells[i][cells[i].length - 1];
       if (last[0] !== train[0].x || last[1] !== train[0].y) cells[i].push([train[0].x, train[0].y, sim.tick]);
     });
@@ -215,7 +227,7 @@ function runScenario(scenario, { traceEvery = 15, createSim = levelIndex => new 
       tickRate: TICK_RATE,
       outcome: { status: sim.status === 'running' ? 'timeout' : sim.status, reason: sim.reason, tick: sim.tick },
       trains: cells.map(list => ({ cells: list })),
-      finalCells: sim.game.trains.map(train => train.map(part => [part.x, part.y])),
+      finalCells: sim.trains.map(train => train.map(part => [part.x, part.y])),
     },
     trace,
   };

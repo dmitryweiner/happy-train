@@ -2,7 +2,7 @@ import { afterEach, describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES, RAIL_WIDTH, TIE_SPACING, TIE_WIDTH } from '../src/constants';
 import { createCanvas } from 'canvas';
 import { createTestCanvas, compareCanvasWithReference } from './setup';
-import { drawCell, renderParams } from '../src/graphics';
+import { drawCell, renderParams } from '../src/render/graphics';
 
 describe('Cell Parameters Tests', () => {
   // Тестируем влияние параметров отрисовки (renderParams) на отрисовку

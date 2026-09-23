@@ -1,5 +1,5 @@
-import { Game } from './game';
-import { loadTrainImages } from './graphics';
+import { Game } from './ui/game';
+import { loadTrainImages } from './render/graphics';
 
 // Start the game when the page loads
 window.addEventListener("load", () => {

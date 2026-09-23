@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 // Импортируем необходимые константы и функции
-import { calculateTurnPosition, calculateStraightPosition, isSwitchCell, isSemaphoreAtPosition } from '../src/utils';
+import { calculateTurnPosition, calculateStraightPosition, isSwitchCell, isSemaphoreAtPosition } from '../src/core/movement';
 import { CELL_SIZE, CELL_TYPES, DIRECTIONS } from '../src/constants';
 
 

@@ -1,6 +1,6 @@
 // Графические функции для игры
-import { CELL_SIZE, CELL_TYPES, GRID_HEIGHT, GRID_WIDTH, RAIL_WIDTH, TIE_SPACING, TIE_WIDTH, type CellType } from './constants';
-import type { TrainPart } from './types';
+import { CELL_SIZE, CELL_TYPES, GRID_HEIGHT, GRID_WIDTH, RAIL_WIDTH, TIE_SPACING, TIE_WIDTH, type CellType } from '../constants';
+import type { TrainPart } from '../types';
 
 // Параметры отрисовки. Изменяемы, чтобы тесты могли рисовать клетки с другими размерами.
 export const renderParams = {

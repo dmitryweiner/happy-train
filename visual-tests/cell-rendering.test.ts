@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
 import { createTestCanvas, compareCanvasWithReference } from './setup';
-import { drawCell } from '../src/graphics';
+import { drawCell } from '../src/render/graphics';
 
 describe('Cell Rendering Tests', () => {
   // Тестируем каждый тип клетки отдельно

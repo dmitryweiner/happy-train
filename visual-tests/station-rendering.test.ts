@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
 import { createTestCanvas, compareCanvasWithReference } from './setup';
-import { drawStationCell } from '../src/graphics';
+import { drawStationCell } from '../src/render/graphics';
 
 describe('Station Cell Rendering Tests', () => {
   // Тестируем станционные клетки с разными типами рельсов

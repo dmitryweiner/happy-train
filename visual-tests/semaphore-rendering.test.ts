@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
 import { createTestCanvas, compareCanvasWithReference } from './setup';
-import { drawSemaphoreCell } from '../src/graphics';
+import { drawSemaphoreCell } from '../src/render/graphics';
 
 describe('Semaphore Cell Rendering Tests', () => {
   // Тестируем семафоры на разных типах рельсов в обоих состояниях (открыт/закрыт)

@@ -1,71 +1,67 @@
-// Обёртка над Game из src/ для golden-тестов: те же сценарии, что и у legacy-движка.
-import { Game } from '../../src/game';
+// Симуляция на движке из src/ (core/world) с тем же интерфейсом, что у legacy-обвязки.
+import { isSwitchCell } from '../../src/core/movement';
+import { clickCell, createWorld, stepWorld, type World } from '../../src/core/world';
 import { levels } from '../../src/levels';
 import type { LegacyLevel } from '../../src/types';
-import { isSwitchCell } from '../../src/utils';
-import { GameSim, LegacySim } from './legacy-harness';
+import { DT, LegacySim } from './legacy-harness';
 
-let storedLevel = 0;
-let drawDisabled = false;
+export class CurrentSim {
+  readonly world: World;
+  readonly levelCount = levels.length;
+  tick = 0;
 
-function stubElement() {
-  const noop = () => {};
-  return {
-    style: {} as Record<string, string>,
-    textContent: '',
-    clientWidth: 600,
-    clientHeight: 400,
-    addEventListener: noop,
-    // Контекст-заглушка: любой метод — пустая функция (фон и отрисовка в тестах не нужны)
-    getContext: () => new Proxy({}, { get: () => noop }),
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 600, height: 400 }),
-  };
-}
-
-// Свежие DOM-заглушки на каждую симуляцию: Game хранит ссылки на элементы (экраны итога и т. п.),
-// и состояние одной симуляции не должно просачиваться в следующую.
-function installDomStubs(): void {
-  const elements: Record<string, ReturnType<typeof stubElement>> = {};
-  Object.assign(globalThis, {
-    document: {
-      getElementById: (id: string) => elements[id] || (elements[id] = stubElement()),
-      createElement: () => stubElement(),
-      addEventListener: () => {},
-    },
-    window: { addEventListener: () => {} },
-    localStorage: {
-      getItem: () => String(storedLevel),
-      setItem: () => {},
-      removeItem: () => {},
-    },
-    requestAnimationFrame: () => 0,
-  });
-  if (!drawDisabled) {
-    drawDisabled = true;
-    // Отрисовка в симуляции не участвует
-    Game.prototype.draw = () => {};
-  }
-}
-
-export type Sim = InstanceType<typeof GameSim>;
-
-export class CurrentSim extends GameSim {
   constructor(levelIndex: number, { customLevel }: { customLevel?: LegacyLevel } = {}) {
-    installDomStubs();
-    storedLevel = levelIndex;
-    const list = customLevel ? levels.map((level, i) => (i === levelIndex ? customLevel : level)) : levels;
-    // Как в legacy-обвязке: время стоит на нуле, первый кадр из конструктора получает deltaTime = 0
-    const originalNow = performance.now;
-    performance.now = () => 0;
-    let game: Game;
-    try {
-      game = new Game(list);
-    } finally {
-      performance.now = originalNow;
-    }
-    super(game, { isSwitchCell, levelCount: list.length });
+    this.world = createWorld(customLevel ?? levels[levelIndex]);
+    // Как в игре: конструктор Game сразу рисует первый кадр, и update получает deltaTime ≈ 0
+    stepWorld(this.world, 0);
+  }
+
+  get status() {
+    return this.world.status;
+  }
+
+  get reason() {
+    return this.world.crash?.reason ?? null;
+  }
+
+  get trains() {
+    return this.world.trains;
+  }
+
+  get switchStates() {
+    return this.world.switchStates;
+  }
+
+  get semaphoreStates() {
+    return this.world.semaphoreStates;
+  }
+
+  click(x: number, y: number): void {
+    clickCell(this.world, x, y);
+  }
+
+  controls(): { kind: 'switch' | 'semaphore'; x: number; y: number }[] {
+    const parse = (key: string) => key.split(',').map(Number) as [number, number];
+    return [
+      ...Object.keys(this.world.switchStates).map(key => {
+        const [x, y] = parse(key);
+        return { kind: 'switch' as const, x, y };
+      }),
+      ...Object.keys(this.world.semaphoreStates)
+        .map(parse)
+        .filter(([x, y]) => !isSwitchCell(this.world.grid[y][x]))
+        .map(([x, y]) => ({ kind: 'semaphore' as const, x, y })),
+    ];
+  }
+
+  step(dt = DT): void {
+    if (this.status !== 'running') return;
+    stepWorld(this.world, dt);
+    this.tick++;
   }
 }
+
+export type Sim = CurrentSim | InstanceType<typeof LegacySim>;
 
 // Движок для golden-тестов: GOLDEN_ENGINE=legacy — замороженная копия, иначе код из src/
 export const ENGINE = process.env.GOLDEN_ENGINE === 'legacy' ? 'legacy' : 'current';

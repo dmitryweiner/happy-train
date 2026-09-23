@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 
 // Import constants and functions
 import { DIRECTIONS, CELL_TYPES } from '../src/constants';
-import { calculateNextPosition, isSwitchCell } from '../src/utils';
+import { calculateNextPosition, isSwitchCell } from '../src/core/movement';
 
 
 describe('Switch Detection', () => {

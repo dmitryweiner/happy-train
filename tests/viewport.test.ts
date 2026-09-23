@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, VIEW_ZOOM_MIN, VIEW_ZOOM_MAX, VIEW_ZOOM_WHEEL_SENSITIVITY } from '../src/constants';
-import { clientToGridCell, clampViewZoom, zoomFromWheelDelta, zoomFromPinchRatio, touchPairDistance, buildCanvasViewTransform, computeViewPanBounds, clampViewPanPair } from '../src/viewport';
+import { clientToGridCell, clampViewZoom, zoomFromWheelDelta, zoomFromPinchRatio, touchPairDistance, buildCanvasViewTransform, computeViewPanBounds, clampViewPanPair } from '../src/ui/viewport';
 
 describe('clientToGridCell', () => {
   const rect = { left: 100, top: 50, width: 300, height: 200 };

@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
 import { createCanvas } from 'canvas';
 import { compareCanvasWithReference } from './setup';
-import { generateBackground, seededRandom } from '../src/graphics';
+import { generateBackground, seededRandom } from '../src/render/graphics';
 
 const createGrid = (maxX: number, maxY: number, fillValue: string): string[][] => Array(maxX).fill(Array(maxY).fill(fillValue));
 

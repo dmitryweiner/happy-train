@@ -1,5 +1,5 @@
 import { CELL_SIZE, GRID_HEIGHT, GRID_WIDTH } from '../constants';
-import { drawCell, drawSemaphoreCell, drawStationCell, drawSwitchCell, drawTrainPart, generateBackground, loadTrainImages } from '../graphics';
+import { drawCell, drawSemaphoreCell, drawStationCell, drawSwitchCell, drawTrainPart, generateBackground, loadTrainImages } from '../render/graphics';
 import { levels } from '../levels';
 import type { GridPoint, SemaphoreConfig, TrainPartConfig } from '../types';
 

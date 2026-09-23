@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
 import { createCanvas } from 'canvas';
 import { compareCanvasWithReference } from './setup';
-import { drawCell } from '../src/graphics';
+import { drawCell } from '../src/render/graphics';
 
 describe('Track Segments Tests', () => {
   test('Straight horizontal segment', () => {

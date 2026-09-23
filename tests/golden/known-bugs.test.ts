@@ -50,7 +50,7 @@ describe('known engine bugs', () => {
       targetPoint: { x: 14, y: 9 },
     };
     const sim = createSim(0, { customLevel });
-    while (sim.status === 'running' && sim.game.trains[0][0].x < 6) sim.step();
+    while (sim.status === 'running' && sim.trains[0][0].x < 6) sim.step();
     // Локомотив въехал в "|" на ходу вправо: дальше ехать нельзя.
     for (let i = 0; i < TICK_RATE && sim.status === 'running'; i++) sim.step();
     expect(sim.status).toBe('crashed');

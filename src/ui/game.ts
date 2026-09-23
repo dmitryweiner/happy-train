@@ -1,25 +1,20 @@
 import {
   CELL_SIZE,
-  CELL_TYPES,
   GRID_HEIGHT,
   GRID_WIDTH,
-  LOCOMOTIVE_STATES,
   STORAGE_KEYS,
-  TRAIN_ACCELERATION,
-  TRAIN_DECELERATION,
-  TRAIN_MAX_SPEED,
   VIEW_DRAG_THRESHOLD_PX,
   VIEW_PINCH_RATIO_THRESHOLD,
   VIEW_ZOOM_MAX,
   VIEW_ZOOM_MIN,
   VIEW_ZOOM_WHEEL_SENSITIVITY,
-  type CellType,
-} from './constants';
-import { drawCell, drawSemaphoreCell, drawStationCell, drawSwitchCell, drawTrainPart, generateBackground } from './graphics';
-import { levels } from './levels';
+} from '../constants';
+import { clickCell, createWorld, stepWorld, type World } from '../core/world';
+import { generateBackground } from '../render/graphics';
+import { drawWorld } from '../render/world-renderer';
+import { levels } from '../levels';
+import type { LegacyLevel } from '../types';
 import { Storage } from './storage';
-import type { LegacyLevel, TrainPart } from './types';
-import { calculateNextPosition, isSwitchCell } from './utils';
 import {
   buildCanvasViewTransform,
   clampViewPanPair,
@@ -60,10 +55,7 @@ export class Game {
   viewZoom: number;
   viewPanX: number;
   viewPanY: number;
-  grid: CellType[][] = [];
-  switchStates: Record<string, { isStraight: boolean }> = {};
-  semaphoreStates: Record<string, { isOpen: boolean }> = {};
-  trains: TrainPart[][] = [];
+  world!: World;
   backgroundCanvas!: CanvasImageSource;
 
   private _pinchStartDistance: number;
@@ -190,67 +182,10 @@ export class Game {
     // Load level data (use current level)
     const currentLevel = this.levels[this.currentLevelIndex];
     
-    // Initialize game grid from level data
-    this.grid = currentLevel.grid.map(row => [...row]); // Deep copy the grid
-    
-    // Initialize switch states
-    this.switchStates = {};
-    
-    // Scan grid for switches and set default states
-    for (let y = 0; y < this.grid.length; y++) {
-      for (let x = 0; x < this.grid[y].length; x++) {
-        const cell = this.grid[y][x];
-        if (isSwitchCell(cell)) {
-          this.switchStates[`${x},${y}`] = { 
-            isStraight: true // Default state
-          };
-        }
-      }
-    }
-    
-    // Initialize semaphore states from level data
-    this.semaphoreStates = {};
-    
-    // Initialize semaphores from level data
-    if (currentLevel.semaphores) {
-      for (const semaphore of currentLevel.semaphores) {
-        this.semaphoreStates[`${semaphore.x},${semaphore.y}`] = { 
-          isOpen: semaphore.isOpen
-        };
-      }
-    }
-    
-    // Create train parts from level data
-    this.trains = [];
-    for (let trainIndex = 0; trainIndex < currentLevel.trains.length; trainIndex++) {
-      this.trains[trainIndex] = [];
-      for(let trainPartIndex = 0; trainPartIndex < currentLevel.trains[trainIndex].length; trainPartIndex++) {
-        const trainData = currentLevel.trains[trainIndex][trainPartIndex];
-        const direction = trainData.direction;
-        
-        const trainPart: TrainPart = {
-          type: trainData.type,
-          x: trainData.x,
-          y: trainData.y,
-          direction: direction,
-          speed: 0,
-          pixelX: (trainData.x + 0.5) * CELL_SIZE,
-          pixelY: (trainData.y + 0.5) * CELL_SIZE,
-        };
-        
-        // Add locomotive state if it's a locomotive
-        if (trainData.type === 'locomotive') {
-          trainPart.state = LOCOMOTIVE_STATES.ACCELERATING;
-        } else {
-          trainPart.wagonType = trainData.type === 'wagon' ? trainData.wagonType : undefined;
-        }
-        
-        this.trains[trainIndex].push(trainPart);
-      }
-    }
+    this.world = createWorld(currentLevel);
     
     // Создаем фон
-    this.backgroundCanvas = generateBackground(this.canvas, this.grid);
+    this.backgroundCanvas = generateBackground(this.canvas, this.world.grid);
     
     // Обновляем отображение уровня
     this.updateLevelDisplay();
@@ -260,39 +195,6 @@ export class Game {
     this.applyViewTransform();
   }
 
-
-  // Toggle switch state when clicked/tapped
-  toggleSwitch(x: number, y: number): void {
-    const key = `${x},${y}`;
-    if (this.switchStates[key]) {
-      // Check if train is on the switch
-      if (this.isTrainOnSwitch(x, y)) return;
-      
-      // Toggle state
-      this.switchStates[key].isStraight = !this.switchStates[key].isStraight;
-    }
-  }
-
-  // Toggle semaphore state when clicked/tapped
-  toggleSemaphore(x: number, y: number): void {
-    const key = `${x},${y}`;
-    if (this.semaphoreStates[key]) {
-      // Toggle state (semaphores can be toggled even if train is on them)
-      this.semaphoreStates[key].isOpen = !this.semaphoreStates[key].isOpen;
-    }
-  }
-
-  // Check if any train part is on the given cell
-  isTrainOnSwitch(x: number, y: number): boolean {
-    return this.trains.some(trainParts => trainParts.some(part => part.x === x && part.y === y));
-  }
-
-  // Check if there is a semaphore at given coordinates
-  isSemaphoreAtPosition(x: number, y: number): boolean {
-    const currentLevel = this.levels[this.currentLevelIndex];
-    return currentLevel.semaphores && 
-           currentLevel.semaphores.some(semaphore => semaphore.x === x && semaphore.y === y);
-  }
 
   setupEventListeners() {
     this.playAgainButton.addEventListener("click", () => {
@@ -379,12 +281,7 @@ export class Game {
       );
 
       if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-        const cellType = this.grid[y][x];
-        if (isSwitchCell(cellType)) {
-          this.toggleSwitch(x, y);
-        } else if (this.isSemaphoreAtPosition(x, y)) {
-          this.toggleSemaphore(x, y);
-        }
+        clickCell(this.world, x, y);
       }
     };
 
@@ -565,220 +462,25 @@ export class Game {
   }
 
   update(deltaTime: number): void {
-    if (this.trains.some(train => train[0].state === LOCOMOTIVE_STATES.CRASHED)) {
+    const previousStatus = this.world.status;
+    stepWorld(this.world, deltaTime);
+    if (this.world.status === previousStatus) {
       return;
     }
-
-    for (let trainIndex = 0; trainIndex < this.trains.length; trainIndex++) {
-      const locomotive = this.trains[trainIndex][0];
-
-      // Check if locomotive is on a semaphore
-      if (this.isSemaphoreAtPosition(locomotive.x, locomotive.y)) {
-        const semaphoreKey = `${locomotive.x},${locomotive.y}`;
-        const semaphoreState = this.semaphoreStates[semaphoreKey];
-
-        if (semaphoreState) {
-          if (!semaphoreState.isOpen) {
-            if (locomotive.speed > 0) {
-              locomotive.state = LOCOMOTIVE_STATES.DECELERATING;
-            } else {
-              locomotive.state = LOCOMOTIVE_STATES.STOPPED;
-            }
-          } else {
-            locomotive.state = LOCOMOTIVE_STATES.ACCELERATING;
-          }
-        }
-      }
-
-      switch (locomotive.state) {
-        case LOCOMOTIVE_STATES.ACCELERATING:
-          if (locomotive.speed < TRAIN_MAX_SPEED) {
-            locomotive.speed = Math.min(
-              TRAIN_MAX_SPEED,
-              locomotive.speed + TRAIN_ACCELERATION * deltaTime
-            );
-          }
-          break;
-        case LOCOMOTIVE_STATES.DECELERATING:
-          if (locomotive.speed > 0) {
-            locomotive.speed = Math.max(
-              0,
-              locomotive.speed - TRAIN_DECELERATION * deltaTime
-            );
-          }
-          break;
-        case LOCOMOTIVE_STATES.STOPPED:
-          locomotive.speed = 0;
-          break;
-        case LOCOMOTIVE_STATES.IDLE:
-          break;
-        default:
-          break;
-      }
-
-      // Process all train parts in a single loop
-      for (let i = 0; i < this.trains[trainIndex].length; i++) {
-        const trainPart = this.trains[trainIndex][i];
-
-        // For wagons, use locomotive's speed
-        if (i > 0) {
-          trainPart.speed = locomotive.speed;
-        }
-
-        // Get current cell type
-        const currentCellType = this.grid[trainPart.y][trainPart.x];
-
-        // Calculate next position using the shared function
-        const nextPosition = calculateNextPosition(
-          currentCellType,
-          trainPart.x,
-          trainPart.y,
-          trainPart.pixelX,
-          trainPart.pixelY,
-          trainPart.direction,
-          trainPart.speed,
-          deltaTime,
-          this.getSwitchState(trainPart.x, trainPart.y),
-        );
-
-        const nextPixelX = nextPosition.x;
-        const nextPixelY = nextPosition.y;
-        trainPart.direction = nextPosition.direction;
-
-        // Convert pixel position to grid position (using center points)
-        const nextGridX = Math.floor(nextPixelX / CELL_SIZE);
-        const nextGridY = Math.floor(nextPixelY / CELL_SIZE);
-
-        // Check if train part moved to a new cell
-        if (nextGridX !== trainPart.x || nextGridY !== trainPart.y) {
-          // Check if the new cell is valid
-          if (this.isValidMove(nextGridX, nextGridY)) {
-            // Update grid position first
-            trainPart.x = nextGridX;
-            trainPart.y = nextGridY;
-
-            // Check if locomotive reached the target point (station)
-            if (i === 0) {
-              // Only check for locomotive (first train part)
-              const currentLevel = this.levels[this.currentLevelIndex];
-              const targetPoint = currentLevel.targetPoint;
-
-              if (
-                trainPart.x === targetPoint.x &&
-                trainPart.y === targetPoint.y
-              ) {
-                // Level completed!
-                if (this.currentLevelIndex < this.levels.length - 1) {
-                  // More levels available
-                  this.levelCompleteScreen.style.display = "block";
-                } else {
-                  // All levels completed
-                  this.gameWinScreen.style.display = "block";
-                }
-                locomotive.state = LOCOMOTIVE_STATES.CRASHED;
-                return;
-              }
-            }
-          } else {
-            this.crashTrain(trainIndex);
-            return;
-          }
-        }
-
-        // Update train part pixel position
-        trainPart.pixelX = nextPixelX;
-        trainPart.pixelY = nextPixelY;
-      }
-
-      // Check for collisions between train parts
-      if (this.checkCollisions()) {
-        this.crashTrain(trainIndex);
-        return;
+    if (this.world.status === 'crashed') {
+      this.gameOverScreen.style.display = "block";
+    } else if (this.world.status === 'won') {
+      if (this.currentLevelIndex < this.levels.length - 1) {
+        // More levels available
+        this.levelCompleteScreen.style.display = "block";
+      } else {
+        // All levels completed
+        this.gameWinScreen.style.display = "block";
       }
     }
-  }
-
-  isValidMove(x: number, y: number): boolean {
-    // Check if position is within grid
-    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
-      return false;
-    }
-
-    // Check if there are rails at the position
-    const cellType = this.grid[y][x];
-    return cellType !== CELL_TYPES.EMPTY;
-  }
-
-  getSwitchState(x: number, y: number): boolean | undefined {
-    return this.switchStates[`${x},${y}`]?.isStraight;
-  }
-
-  checkCollisions(): boolean {
-    const collisionDistance = CELL_SIZE / 2;
-
-    const trainParts = this.trains.flat();
-    
-    // Check all pairs of train parts
-    for (let i = 0; i < trainParts.length; i++) {
-      for (let j = i + 1; j < trainParts.length; j++) {
-        const part1 = trainParts[i];
-        const part2 = trainParts[j];
-        
-        // Calculate distance between the two train parts
-        const dx = part1.pixelX - part2.pixelX;
-        const dy = part1.pixelY - part2.pixelY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Check if parts are too close (collision)
-        if (distance < collisionDistance) {
-          return true;
-        }
-      }
-    }
-    
-    return false;
-  }
-
-  crashTrain(trainIndex: number): void {
-    this.trains[trainIndex][0].state = LOCOMOTIVE_STATES.CRASHED;
-    this.gameOverScreen.style.display = "block";
   }
 
   draw(): void {
-    // Clear canvas
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    // Draw background
-    this.ctx.drawImage(this.backgroundCanvas, 0, 0);
-
-    // Get current level target point
-    const currentLevel = this.levels[this.currentLevelIndex];
-    const targetPoint = currentLevel.targetPoint;
-
-    // Draw grid (rails only)
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-      for (let x = 0; x < GRID_WIDTH; x++) {
-        const cellType = this.grid[y][x];
-        
-        // Check if this is the station cell
-        if (x === targetPoint.x && y === targetPoint.y) {
-          drawStationCell(this.ctx, x, y, cellType);
-        } else if (isSwitchCell(cellType)) {
-          drawSwitchCell(this.ctx, x, y, cellType, this.getSwitchState(x, y));
-        } else if (this.isSemaphoreAtPosition(x, y)) {
-          const semaphoreState = this.semaphoreStates[`${x},${y}`];
-          drawSemaphoreCell(this.ctx, x, y, cellType, semaphoreState?.isOpen);
-        } else {
-          drawCell(this.ctx, x, y, cellType);
-        }
-      }
-    }
-
-    // Draw train and all wagons
-    this.trains.forEach(train => {
-      train.forEach(part => {
-        drawTrainPart(this.ctx, part);
-      });
-    });
+    drawWorld(this.ctx, this.world, this.backgroundCanvas);
   }
 }

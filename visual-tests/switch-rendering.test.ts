@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, CELL_TYPES } from '../src/constants';
 import { createTestCanvas, compareCanvasWithReference } from './setup';
-import { drawSwitchCell } from '../src/graphics';
+import { drawSwitchCell } from '../src/render/graphics';
 
 describe('Switch Cell Rendering Tests', () => {
   // Тестируем каждый тип стрелки в обоих состояниях
