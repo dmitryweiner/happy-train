@@ -10,7 +10,10 @@
     "test": "yarn test:unit && yarn test:visual",
     "test:unit": "jest tests/*",
     "test:visual": "jest visual-tests/*",
-    "test:visual:update": "rm -rf visual-tests/fixtures && jest visual-tests/*"
+    "test:visual:update": "rm -rf visual-tests/fixtures && UPDATE_VISUAL=1 jest visual-tests/*",
+    "test:golden": "jest tests/golden",
+    "test:golden:update": "UPDATE_GOLDEN=1 jest tests/golden",
+    "solve:legacy": "node tests/golden/legacy-solve.js"
   },
   "jest": {
     "testEnvironment": "node"

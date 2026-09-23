@@ -36,8 +36,11 @@ function compareCanvasWithReference(canvas, referenceName, threshold = 0.1) {
   const actualBuffer = canvas.toBuffer('image/png');
   const refPath = path.join(testDir, `${referenceName}.png`);
   
-  // Создаем эталон, если его нет
+  // Эталон создаётся только явно (yarn test:visual:update), иначе пропавший эталон не заметить
   if (!fs.existsSync(refPath)) {
+    if (process.env.UPDATE_VISUAL !== '1') {
+      throw new Error(`Нет эталона ${referenceName}.png. Создайте его: yarn test:visual:update`);
+    }
     fs.writeFileSync(refPath, actualBuffer);
     return { diffPixels: 0, message: 'Created reference image' };
   }

@@ -1,0 +1,17 @@
+[
+  {"name":"L1-idle","level":1,"maxTicks":3600},
+  {"name":"L1-solution","level":1,"maxTicks":5400,"expect":"won","actions":[{"tick":726,"x":7,"y":9},{"tick":1067,"x":14,"y":3},{"tick":1271,"x":6,"y":3},{"tick":1301,"x":7,"y":3}]},
+  {"name":"L1-broken","level":1,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":726,"x":7,"y":9},{"tick":1067,"x":14,"y":3},{"tick":1271,"x":6,"y":3}]},
+  {"name":"L2-idle","level":2,"maxTicks":3600},
+  {"name":"L2-solution","level":2,"maxTicks":5400,"expect":"won","actions":[{"tick":242,"x":3,"y":3},{"tick":846,"x":7,"y":9},{"tick":1020,"x":2,"y":7}]},
+  {"name":"L2-broken","level":2,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":242,"x":3,"y":3},{"tick":846,"x":7,"y":9}]},
+  {"name":"L3-idle","level":3,"maxTicks":3600},
+  {"name":"L3-solution","level":3,"maxTicks":5400,"expect":"won","actions":[{"tick":181,"x":4,"y":2},{"tick":553,"x":9,"y":6}]},
+  {"name":"L3-broken","level":3,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":181,"x":4,"y":2}]},
+  {"name":"L4-idle","level":4,"maxTicks":3600},
+  {"name":"L4-solution","level":4,"maxTicks":5400,"expect":"won","actions":[{"tick":769,"x":4,"y":6},{"tick":2282,"x":10,"y":3}]},
+  {"name":"L4-broken","level":4,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":769,"x":4,"y":6}]},
+  {"name":"L5-idle","level":5,"maxTicks":3600},
+  {"name":"L6-idle","level":6,"maxTicks":3600},
+  {"name":"L7-idle","level":7,"maxTicks":3600}
+]
