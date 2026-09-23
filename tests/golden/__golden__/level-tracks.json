@@ -1,0 +1,123 @@
+[
+  {
+   "level": 1,
+   "grid": [
+    ["ES","EW","EW","EW","EW","SW","","","","ES","EW","EW","EW","EW","SW"],
+    ["NS","","","","","NS","","","","NS","","","","","NS"],
+    ["NS","","","","","NS","","","","NS","","","","","NS"],
+    ["NS+ES","EW","EW","EW","EW","EW+NW","EW+ES","EW","EW+SW","EW+NE","EW","EW","EW","EW","NS+SW"],
+    ["NS","","","","","","NS","","NS","","","","","","NS"],
+    ["NS","","","","","","NS","","NS","","","","","","NS"],
+    ["NS","","","","","","NE","EW","NW","","","","","","NS"],
+    ["NE","EW","SW","","","","","","","","","","ES","EW","NW"],
+    ["","","NS","","","","","","","","","","NS","",""],
+    ["","","NE","EW","EW","EW","EW","EW","EW","EW","EW","EW","NW","",""]
+   ],
+   "issues": []
+  },
+  {
+   "level": 2,
+   "grid": [
+    ["ES","EW","EW","EW","EW","SW","","","","ES","EW","EW","EW","EW","SW"],
+    ["NS","","","","","NS","","","","NS","","","","","NS"],
+    ["NS","","","","","NS","","","","NS","","","","","NS"],
+    ["NS+ES","EW","EW","EW+ES","EW","EW+NW","EW","EW","EW","EW+NE","EW","EW+SW","EW","EW","NS+SW"],
+    ["NS","","","NS","","","","","","","","NS","","","NS"],
+    ["NS","","","NS","","","","","","","","NS","","","NS"],
+    ["NS","","ES","EW+NE","EW","EW","EW","EW","EW","EW","EW","EW+NW","SW","","NS"],
+    ["NE","EW","NS+SW","","","","","","","","","","NS+ES","EW","NW"],
+    ["","","NS","","","","","","","","","","NS","",""],
+    ["","","NE","EW","EW","EW","EW","EW","EW","EW","EW","EW","NW","",""]
+   ],
+   "issues": []
+  },
+  {
+   "level": 3,
+   "grid": [
+    ["ES","EW","EW","EW","SW","","","","","","ES","EW","EW","EW","SW"],
+    ["NS","","","","NS","","","","","","NS","","","","NS"],
+    ["NS","","","","NS","ES","EW","EW","EW","SW","NS","","","","NS"],
+    ["NE","EW","EW","EW","EW+NE","NS+SW","","","","NS+ES","EW+NW","EW","EW","EW","NW"],
+    ["","","","","","NS","","","","NS","","","","",""],
+    ["","","","","","NS","","","","NS","","","","",""],
+    ["ES","EW","EW","EW","EW+ES","NS+NW","","","","NS+NE","EW+SW","EW","EW","EW","SW"],
+    ["NS","","","","NS","NE","EW","EW","EW","NW","NS","","","","NS"],
+    ["NS","","","","NS","","","","","","NS","","","","NS"],
+    ["NE","EW","EW","EW","NW","","","","","","NE","EW","EW","EW","NW"]
+   ],
+   "issues": []
+  },
+  {
+   "level": 4,
+   "grid": [
+    ["","","","","","","","ES","EW","EW","EW","EW","EW","EW","SW"],
+    ["","ES","EW","EW","SW","","","NS","","","","","","","NS"],
+    ["","NS","","","NS","","","NS","","","","","","","NS"],
+    ["","NS","","","NS","","","NS+ES","EW","EW","EW+ES","EW","EW","EW","NW"],
+    ["","NE","EW","EW","NS+SW","","","NS","","","NS","","","",""],
+    ["","","","","NS","","","NS","","","NS+NE","EW","EW","SW",""],
+    ["ES","EW","EW","EW","EW+NW","EW","EW","NS+SW","","","NS","","","NS",""],
+    ["NS","","","","","","","NS","","","NS","","","NS",""],
+    ["NS","","","","","","","NS","","","NE","EW","EW","NW",""],
+    ["NE","EW","EW","EW","EW","EW","EW","NW","","","","","","",""]
+   ],
+   "issues": []
+  },
+  {
+   "level": 5,
+   "grid": [
+    ["EW+ES","EW","EW","SW","","ES","EW","EW","EW","SW","","ES","EW","EW","EW+SW"],
+    ["NS","","","NS","","NS","","","","NS","","NS","","","NS"],
+    ["NS","","","NS","","NS","","","","NS","","NS","","","NS"],
+    ["EW+NE","EW","EW","EW+NE","EW","EW+NE","SW","","ES","EW+NW","EW","EW+NW","EW","EW","EW+NW"],
+    ["","","","","","","NS","","NS","","","","","",""],
+    ["","","","","","","NS","","NS","","","","","",""],
+    ["EW+ES","EW","EW","EW+ES","EW","EW+ES","NW","","NE","EW+SW","EW","EW+SW","EW","EW","EW+SW"],
+    ["NS","","","NS","","NS","","","","NS","","NS","","","NS"],
+    ["NS","","","NS","","NS","","","","NS","","NS","","","NS"],
+    ["EW+NE","EW","EW","NW","","NE","EW","EW","EW","NW","","NE","EW","EW","EW+NW"]
+   ],
+   "issues": [
+    {"severity":"warning","x":0,"y":0,"message":"cell (0,0) \"EW+ES\": exits W off the field"},
+    {"severity":"warning","x":14,"y":0,"message":"cell (14,0) \"EW+SW\": exits E off the field"},
+    {"severity":"warning","x":0,"y":3,"message":"cell (0,3) \"EW+NE\": exits W off the field"},
+    {"severity":"warning","x":14,"y":3,"message":"cell (14,3) \"EW+NW\": exits E off the field"},
+    {"severity":"warning","x":0,"y":6,"message":"cell (0,6) \"EW+ES\": exits W off the field"},
+    {"severity":"warning","x":14,"y":6,"message":"cell (14,6) \"EW+SW\": exits E off the field"},
+    {"severity":"warning","x":0,"y":9,"message":"cell (0,9) \"EW+NE\": exits W off the field"},
+    {"severity":"warning","x":14,"y":9,"message":"cell (14,9) \"EW+NW\": exits E off the field"}
+   ]
+  },
+  {
+   "level": 6,
+   "grid": [
+    ["ES","EW","EW","EW","SW","ES","SW","","ES","SW","ES","EW","EW","EW","SW"],
+    ["NS","","","","NS","NE","EW+NS","EW","EW+NS","NW","NS","","","","NS"],
+    ["NS","","","","NS","","NS","","NS","","NS","","","","NS"],
+    ["NS","","","","NS","ES","EW+NW","EW","EW+NE","SW","NS","","","","NS"],
+    ["NS+NE","EW","EW","EW","EW+NS","NS+NW","","","","NS+NE","EW+NS","EW","EW","EW+ES","NS+NW"],
+    ["NS+ES","EW","EW","EW","EW+NS","NS+SW","","","","NS+ES","EW+NS","EW","EW","EW+NW","NS+SW"],
+    ["NS","","","","NS","NE","EW+SW","EW","EW+ES","NW","NS","","","","NS"],
+    ["NS","","","","NS","","NS","","NS","","NS","","","","NS"],
+    ["NS","","","","NS","ES","EW+NS","EW","EW+NS","SW","NS","","","","NS"],
+    ["NE","EW","EW","EW","NW","NE","NW","","NE","NW","NE","EW","EW","EW","NW"]
+   ],
+   "issues": []
+  },
+  {
+   "level": 7,
+   "grid": [
+    ["ES","EW","EW+ES","EW","EW","EW","EW+SW","SW","ES","EW+ES","EW","EW+ES","EW","EW","SW"],
+    ["NS","ES","EW+NE","SW","","","NS","NS","NS","NS","","NS","ES","EW","NS+SW"],
+    ["NS+ES","NW","","NE","EW","EW","NS+NW","NS","NS+ES","NW","","NS+ES","NW","","NS"],
+    ["NS","","","","","ES","NW","NS","NS","","ES","NW","","","NS"],
+    ["NE","EW","EW","EW","EW","NW","ES","EW+NS","EW+NS","EW","EW+NW","EW","EW","EW+SW","NS+NW"],
+    ["ES","EW","EW","EW+ES","EW","EW","EW+NS","NS+NW","NS+NE","EW","EW+SW","EW","EW","EW+NW","NS+SW"],
+    ["NS","","ES","NW","","","NS","NS","NS","","NE","EW+SW","EW","SW","NS"],
+    ["NS","ES","NS+NW","","","","NS","NS","NS","","","NS","","NE","NS+SW"],
+    ["NS+ES","NW","NE","SW","","ES","NS+NW","NS","NS","","","NE","SW","","NS"],
+    ["NE","EW","EW","EW+NE","EW","EW+NW","NW","NE","EW+NE","EW","EW","EW","EW+NE","EW","NW"]
+   ],
+   "issues": []
+  }
+]

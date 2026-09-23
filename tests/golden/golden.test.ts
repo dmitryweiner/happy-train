@@ -10,6 +10,8 @@ import { describe, expect, test } from 'vitest';
 import { createSim, ENGINE } from './current-sim';
 import { LegacySim, runScenario } from './legacy-harness';
 import { levels as srcLevels } from '../../src/levels';
+import { legacyGridToTrackMap } from '../../src/core/legacy-import';
+import { trackMapToTokens, validateTrackMap } from '../../src/core/track';
 import scenarios from './scenarios.json';
 
 interface Events {
@@ -89,5 +91,21 @@ describe(`golden: levels (${ENGINE} engine)`, () => {
     const levels = JSON.parse(JSON.stringify(ENGINE === 'legacy' ? new LegacySim(0).ctx.levels : srcLevels)) as unknown[];
     const text = '[\n' + levels.map(level => '  ' + JSON.stringify(level)).join(',\n') + '\n]\n';
     checkGolden('legacy-levels.json', text);
+  });
+});
+
+// Топология путей всех уровней в токенах формата v2 + замечания валидатора (этапы 3–4).
+// Эталон для миграции: уровни v2 должны давать ровно эти клетки.
+describe('golden: track topology of levels', () => {
+  test('токены и замечания совпадают с эталоном', () => {
+    const text = srcLevels
+      .map((level, i) => {
+        const map = legacyGridToTrackMap(level.grid);
+        const rows = trackMapToTokens(map).map(row => '    ' + JSON.stringify(row));
+        const issues = validateTrackMap(map).map(issue => '    ' + JSON.stringify(issue));
+        return `  {\n   "level": ${i + 1},\n   "grid": [\n${rows.join(',\n')}\n   ],\n   "issues": [${issues.length ? '\n' + issues.join(',\n') + '\n   ' : ''}]\n  }`;
+      })
+      .join(',\n');
+    checkGolden('level-tracks.json', `[\n${text}\n]\n`);
   });
 });
