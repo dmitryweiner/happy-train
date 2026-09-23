@@ -1,2 +1,3 @@
 node_modules
 yarn-error.log
+visual-tests/fixtures/*-diff.png

@@ -65,23 +65,6 @@
             <a href="https://github.com/dmitryweiner/happy-train/tree/main" target="_blank">[Code]</a>
         </p>
     </footer>
-    <script src="constants.js"></script>
-    <script src="storage.js"></script>
-    <script src="levels.js"></script>
-    <script src="utils.js"></script>
-    <script src="viewport.js"></script>
-    <script src="graphics.js"></script>
-    <script src="game.js"></script>
-    
-    <script>
-        // Mobile warning close functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const mobileWarning = document.getElementById('mobile-warning');
-            const closeWarningBtn = document.getElementById('close-warning');
-            closeWarningBtn.addEventListener('click', function() {
-                mobileWarning.style.display = 'none';
-            });
-        });
-    </script>
+    <script type="module" src="/src/main.ts"></script>
 </body>
 </html> 

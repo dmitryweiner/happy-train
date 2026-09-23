@@ -1,0 +1,21 @@
+{
+  "$schema": "./level.schema.json",
+  "version": 2,
+  "grid": [
+    ["ES",    "EW",    "EW",    "EW",    "SW",    "ES",    "SW",    "",      "ES",    "SW",    "ES",    "EW",    "EW",    "EW",    "SW"],
+    ["NS",    "",      "",      "",      "NS",    "NE",    "EW+NS", "EW",    "EW+NS", "NW",    "NS",    "",      "",      "",      "NS"],
+    ["NS",    "",      "",      "",      "NS",    "",      "NS",    "",      "NS",    "",      "NS",    "",      "",      "",      "NS"],
+    ["NS",    "",      "",      "",      "NS",    "ES",    "EW+NW", "EW",    "EW+NE", "SW",    "NS",    "",      "",      "",      "NS"],
+    ["NS+NE", "EW",    "EW",    "EW",    "EW+NS", "NS+NW", "",      "",      "",      "NS+NE", "EW+NS", "EW",    "EW",    "EW+ES", "NS+NW"],
+    ["NS+ES", "EW",    "EW",    "EW",    "EW+NS", "NS+SW", "",      "",      "",      "NS+ES", "EW+NS", "EW",    "EW",    "EW+NW", "NS+SW"],
+    ["NS",    "",      "",      "",      "NS",    "NE",    "EW+SW", "EW",    "EW+ES", "NW",    "NS",    "",      "",      "",      "NS"],
+    ["NS",    "",      "",      "",      "NS",    "",      "NS",    "",      "NS",    "",      "NS",    "",      "",      "",      "NS"],
+    ["NS",    "",      "",      "",      "NS",    "ES",    "EW+NS", "EW",    "EW+NS", "SW",    "NS",    "",      "",      "",      "NS"],
+    ["NE",    "EW",    "EW",    "EW",    "NW",    "NE",    "NW",    "",      "NE",    "NW",    "NE",    "EW",    "EW",    "EW",    "NW"]
+  ],
+  "semaphores": [],
+  "trains": [
+    {"at":[0,1],"heading":"N","wagons":["wagon2","wagon2","wagon2","wagon2","wagon2"]}
+  ],
+  "station": [6,2]
+}

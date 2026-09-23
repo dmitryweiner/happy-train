@@ -461,16 +461,16 @@ body {
     /*
      * Мобильная подгонка: transform не уменьшает место в потоке, поэтому обёртка задаёт
      * width/height = визуальный размер после scale, чтобы поле целиком влезало в экран.
-     * 604×404 = 600×400 поле + рамка 2px (content-box).
+     * --board-w/--board-h — поле + рамка 2px (content-box); игра выставляет их под размер уровня, по умолчанию 604×404.
      * 100cqw — ширина #game-container (inline-size), без лишнего 100vw при скроллбаре.
      */
     #game-board-fit-outer {
         display: block;
         /* 100% = ширина #game-container (без бокового padding — поле на всю колонку) */
         /* Деление только на *px*, иначе min() смешивает «1» (число) с длиной — scale() игнорирует transform */
-        --board-fit: min(1, calc(100% / 604px), calc((100vh - 120px) / 404px));
-        width: calc(604px * var(--board-fit));
-        height: calc(404px * var(--board-fit));
+        --board-fit: min(1, calc(100% / var(--board-w, 604px)), calc((100vh - 120px) / var(--board-h, 404px)));
+        width: calc(var(--board-w, 604px) * var(--board-fit));
+        height: calc(var(--board-h, 404px) * var(--board-fit));
         max-width: 100%;
         min-width: 0;
         margin: 0 auto;
@@ -481,7 +481,7 @@ body {
 
     @supports (width: 1cqw) {
         #game-board-fit-outer {
-            --board-fit: min(1, calc(100cqw / 604px), calc((100vh - 120px) / 404px));
+            --board-fit: min(1, calc(100cqw / var(--board-w, 604px)), calc((100vh - 120px) / var(--board-h, 404px)));
         }
     }
 

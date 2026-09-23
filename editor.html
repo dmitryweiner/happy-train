@@ -125,14 +125,13 @@
                         <button id="import-config" class="control-button">Import</button>
                         <button id="export-config" class="control-button">Export</button>
                     </div>
+                    <p class="editor-hint">Level format v2 (JSON). Right click removes objects in a cell. Click a switch again with the same tool to make it start diverging.</p>
+                    <div id="level-issues" aria-live="polite"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="constants.js"></script>
-    <script src="utils.js"></script>
-    <script src="graphics.js"></script>
-    <script src="editor.js"></script>
+    <script type="module" src="/src/editor/editor.ts"></script>
 </body>
 </html> 

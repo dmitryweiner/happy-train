@@ -30,20 +30,20 @@ Happy Train is a browser-based puzzle game that combines strategic thinking with
 
 ### Controls
 - **Scroll wheel** (or pinch on touch) on the game board to zoom the picture inside the fixed field window (about **100%–300%**); **drag** to pan when zoomed in
-- **Click switches** ![Switch](assets/switch.png) to change track directions
-- **Click semaphores** ![Semaphore](assets/semaphore.png) to stop/start trains
+- **Click switches** ![Switch](public/assets/switch.png) to change track directions
+- **Click semaphores** ![Semaphore](public/assets/semaphore.png) to stop/start trains
 - **Click level number** to pause/unpause the game
 
 ### Objectives
-1. Guide the train(s) to the destination station ![Station](assets/station.png)
+1. Guide the train(s) to the destination station ![Station](public/assets/station.png)
 2. Avoid derailments and collisions
 3. Use switches to direct trains along the correct path
 4. Control semaphores to manage train timing
 5. Complete all levels to win!
 
 ### Game Elements
-- **Locomotive** ![Locomotive](assets/locomotive.png): The engine that pulls the train
-- **Wagons** ![Wagon1](assets/wagon1.png) ![Wagon2](assets/wagon2.png): Cargo cars attached to the locomotive
+- **Locomotive** ![Locomotive](public/assets/locomotive.png): The engine that pulls the train
+- **Wagons** ![Wagon1](public/assets/wagon1.png) ![Wagon2](public/assets/wagon2.png): Cargo cars attached to the locomotive
 - **Switches**: Junction points where tracks split - click to toggle direction
 - **Semaphores**: Traffic signals that can stop trains when closed
 - **Stations**: Destination points where trains must arrive
@@ -55,9 +55,11 @@ Happy Train is a browser-based puzzle game that combines strategic thinking with
 - Desktop environment recommended (mobile warning displayed)
 
 ### Installation
-1. Clone or download the repository
-2. Open `index.html` in your web browser
+1. Clone the repository and install dependencies: `yarn install`
+2. Start the dev server: `yarn dev` and open the printed URL
 3. Click "PLAY" to start the game
+
+The game is written in TypeScript and built with [Vite](https://vite.dev/). `yarn build` type-checks the code and writes the production build to `docs/`, which GitHub Pages serves.
 
 ### Development Setup
 
@@ -73,7 +75,24 @@ yarn install
 yarn test
 ```
 
-`package.json` declares `"engines": { "node": ">=22.0.0 <23" }` and uses **`canvas` v3**, which ships prebuilt binaries for Node 22 on darwin arm64 (so you usually do not need Homebrew Cairo). If `yarn install` still tries to compile from source and fails, install system libraries then reinstall, for example on macOS:
+Scripts:
+
+| Command | What it does |
+|---|---|
+| `yarn dev` | Vite dev server |
+| `yarn build` | type-check + production build to `docs/` |
+| `yarn typecheck` / `yarn lint` | TypeScript / ESLint |
+| `yarn test` | all tests (Vitest) |
+| `yarn test:golden` | golden snapshots of the current engine + comparison with recorded legacy behaviour |
+| `yarn test:golden:update` | re-record golden snapshots of the current engine |
+| `yarn test:golden:update-legacy` | re-record golden snapshots of the frozen legacy engine |
+| `yarn test:visual` / `yarn test:visual:update` | visual regression tests / re-create reference images |
+| `yarn level validate levels/*.json` | check levels (format v2): schema, track connectivity, trains |
+| `yarn level render levels/01.json` | ASCII preview of a level |
+| `yarn level solve levels/01.json` | find a solution with the fewest clicks (checks that a level is solvable) |
+| `yarn solve:legacy [level...]` | brute-force solver for levels on the legacy engine |
+
+`package.json` declares `"engines": { "node": ">=22" }` and uses **`canvas` v3**, which ships prebuilt binaries for Node 22 on darwin arm64 (so you usually do not need Homebrew Cairo). If `yarn install` still tries to compile from source and fails, install system libraries then reinstall, for example on macOS:
 
 ```bash
 brew install pkg-config cairo pango libpng jpeg giflib librsvg pixman
@@ -86,17 +105,23 @@ rm -rf node_modules && yarn install
 happy-train/
 ├── .node-version       # Node 22 pin for fnm / asdf
 ├── .nvmrc              # Same version for nvm (`nvm use`)
-├── index.html          # Main game file
-├── editor.html         # Level editor
-├── game.js            # Core game logic
-├── graphics.js        # Rendering engine
-├── levels.js          # Level definitions
-├── constants.js       # Game constants
-├── utils.js           # Utility functions
-├── storage.js         # Save/load functionality
+├── index.html          # Game page (entry: src/main.ts)
+├── editor.html         # Level editor page (entry: src/editor/editor.ts)
+├── src/
+│   ├── main.ts         # Game bootstrap
+│   ├── constants.ts    # Game constants
+│   ├── levels.ts       # Loads and compiles levels/*.json
+│   ├── types.ts        # Shared types
+│   ├── core/           # Simulation without DOM: world state, step, movement
+│   ├── render/         # Canvas rendering
+│   ├── ui/             # Game controller: DOM, input, zoom/pan, screens, storage
+│   └── editor/         # Level editor
+├── levels/            # Levels in format v2 (JSON) + level.schema.json + examples/
+├── tools/level.ts     # Level CLI: validate / render / migrate
 ├── styles.css         # Game styling
 ├── editor.css         # Editor styling
-├── assets/            # Game graphics
+├── docs/              # Production build (served by GitHub Pages)
+├── public/assets/     # Game graphics
 │   ├── locomotive.png
 │   ├── wagon1.png
 │   ├── wagon2.png
@@ -106,12 +131,18 @@ happy-train/
 │   ├── fog.png
 │   └── winner.gif
 ├── tests/             # Unit tests
+│   ├── golden/        # Golden snapshots + frozen legacy engine
+│   └── ui/            # UI integration tests (jsdom)
 └── visual-tests/      # Visual regression tests
 ```
 
+## 🧩 Level Format
+
+Levels are JSON files in `levels/` (format v2): the grid lists which sides of each cell are connected (`"EW"`, `"SW"`, `"EW+SW"` for a switch...), trains are given by the locomotive cell, heading and wagon list. See [LEVEL_FORMAT.md](LEVEL_FORMAT.md) for the full description, common validator errors and a prompt template for generating levels with an LLM (`yarn level validate / render / solve`).
+
 ## 🎨 Level Editor
 
-The game includes a built-in level editor accessible via `editor.html`:
+The game includes a built-in level editor accessible via `editor.html` (`yarn dev`, then open `/editor.html`):
 
 ### Features
 - **Track placement**: Draw rails, curves, and switches
@@ -121,7 +152,7 @@ The game includes a built-in level editor accessible via `editor.html`:
 - **Import/Export**: Save and load custom levels
 
 ### Usage
-1. Open `editor.html` in your browser
+1. Open `editor.html` via the dev server
 2. Select tools from the toolbar
 3. Click on the grid to place elements
 4. Configure level settings in the right panel
@@ -143,7 +174,7 @@ The project includes comprehensive testing:
 
 Run tests with:
 ```bash
-npm test
+yarn test
 ```
 
 ## 🎯 Game Mechanics
@@ -168,7 +199,7 @@ npm test
 
 ## 🔧 Configuration
 
-Game constants can be modified in `constants.js`:
+Game constants can be modified in `src/constants.ts`:
 - Grid dimensions (15x10 cells by default)
 - Cell size (40px)
 - Train speed and acceleration
