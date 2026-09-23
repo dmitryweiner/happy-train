@@ -1,4 +1,4 @@
-// Headless-обвязка для текущего (legacy) движка.
+// Headless-обвязка для legacy-движка и общая логика прогона сценариев.
 // Загружает скрипты игры в изолированный vm-контекст с заглушками DOM,
 // двигает симуляцию фиксированным шагом и снимает с неё trace/events.
 const fs = require('fs');
@@ -36,6 +36,7 @@ function stubElement() {
   };
 }
 
+/** @returns {any} vm-контекст с глобалами legacy-скриптов (Game, levels, isSwitchCell, ...) */
 function createContext(levelIndex) {
   const elements = {};
   const context = {
@@ -67,27 +68,23 @@ function createContext(levelIndex) {
 
 const OVERLAYS = ['gameOverScreen', 'levelCompleteScreen', 'gameWinScreen'];
 
-class LegacySim {
-  // customLevel — уровень в формате levels.js, подменяет уровень levelIndex (для тестов на баги).
-  constructor(levelIndex, { customLevel } = {}) {
-    this.levelIndex = levelIndex;
-    this.ctx = createContext(levelIndex);
-    if (customLevel) this.ctx.levels[levelIndex] = customLevel;
-    this.game = new this.ctx.Game();
+// Общая обёртка над объектом Game (legacy или из src/): клики, шаг, итог, снимки состояния.
+class GameSim {
+  // game — экземпляр Game без отрисовки; isSwitchCell — функция того же движка.
+  constructor(game, { isSwitchCell, levelCount }) {
+    this.game = game;
+    this.isSwitchCell = isSwitchCell;
+    this.levelCount = levelCount;
     this.tick = 0;
     this.status = 'running';
     this.reason = null;
-  }
-
-  get levelCount() {
-    return this.ctx.levels.length;
   }
 
   // Повторяет handleSwitchInteraction из game.js: стрелка важнее семафора.
   click(x, y) {
     const game = this.game;
     const cellType = game.grid[y][x];
-    if (this.ctx.isSwitchCell(cellType)) {
+    if (this.isSwitchCell(cellType)) {
       game.toggleSwitch(x, y);
     } else if (game.isSemaphoreAtPosition(x, y)) {
       game.toggleSemaphore(x, y);
@@ -103,7 +100,7 @@ class LegacySim {
     }
     for (const key of Object.keys(game.semaphoreStates)) {
       const [x, y] = key.split(',').map(Number);
-      if (!this.ctx.isSwitchCell(game.grid[y][x])) result.push({ kind: 'semaphore', x, y });
+      if (!this.isSwitchCell(game.grid[y][x])) result.push({ kind: 'semaphore', x, y });
     }
     return result;
   }
@@ -149,6 +146,17 @@ class LegacySim {
   }
 }
 
+// Legacy-движок из замороженной копии (tests/golden/legacy/).
+class LegacySim extends GameSim {
+  // customLevel — уровень в формате levels.js, подменяет уровень levelIndex (для тестов на баги).
+  constructor(levelIndex, { customLevel } = {}) {
+    const ctx = createContext(levelIndex);
+    if (customLevel) ctx.levels[levelIndex] = customLevel;
+    super(new ctx.Game(), { isSwitchCell: ctx.isSwitchCell, levelCount: ctx.levels.length });
+    this.ctx = ctx;
+  }
+}
+
 const round = (value, digits) => Number(value.toFixed(digits));
 
 function traceFrame(sim) {
@@ -172,14 +180,16 @@ function traceFrame(sim) {
 }
 
 /**
- * Прогоняет сценарий на legacy-движке.
+ * Прогоняет сценарий (по умолчанию на legacy-движке; createSim подставляет другой движок).
  * scenario = { level: 1-based, maxTicks, actions: [{ tick, x, y }] } — action = клик по клетке перед шагом tick.
  * Возвращает { events, trace }:
  *  - events: для каждого поезда последовательность клеток локомотива с тиком входа, итог и тик итога;
  *  - trace: кадры каждые traceEvery тиков (позиции с округлением до 0.1px).
+ * @param {{ level: number, maxTicks?: number, actions?: { tick: number, x: number, y: number }[] }} scenario
+ * @param {{ traceEvery?: number, createSim?: (levelIndex: number) => GameSim }} [options]
  */
-function runScenario(scenario, { traceEvery = 15 } = {}) {
-  const sim = new LegacySim(scenario.level - 1);
+function runScenario(scenario, { traceEvery = 15, createSim = levelIndex => new LegacySim(levelIndex) } = {}) {
+  const sim = createSim(scenario.level - 1);
   const actions = [...(scenario.actions || [])].sort((a, b) => a.tick - b.tick);
   const maxTicks = scenario.maxTicks ?? 60 * TICK_RATE;
 
@@ -211,4 +221,4 @@ function runScenario(scenario, { traceEvery = 15 } = {}) {
   };
 }
 
-module.exports = { LegacySim, runScenario, TICK_RATE, DT };
+module.exports = { GameSim, LegacySim, runScenario, TICK_RATE, DT };
