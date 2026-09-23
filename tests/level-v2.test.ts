@@ -66,9 +66,28 @@ describe('compileLevel: ошибки', () => {
   });
 
   test('размер поля', () => {
-    expect(issuesOf(modified(1, l => { l.grid.pop(); }))).toEqual([
-      'error: grid must be 15×10 cells (got 15×9); other sizes are not supported yet',
+    expect(issuesOf(modified(1, l => { l.grid[3].pop(); }))).toEqual(['error: grid rows must have the same length (got 15, 14)']);
+    expect(issuesOf(modified(1, l => { l.grid = l.grid.slice(0, 2); }))).toEqual([
+      'error: grid is 15×2; allowed from 3×3 to 30×20',
     ]);
+  });
+
+  test('поле любого допустимого размера', () => {
+    const small: LevelV2 = {
+      version: 2,
+      grid: [
+        ['ES', 'EW', 'EW', 'EW', 'EW', 'EW', 'EW', 'SW'],
+        ['NS', '', '', '', '', '', '', 'NS'],
+        ['NS', '', '', '', '', '', '', 'NS'],
+        ['NS', '', '', '', '', '', '', 'NS'],
+        ['NE', 'EW', 'EW', 'EW', 'EW', 'EW', 'EW', 'NW'],
+      ],
+      trains: [{ at: [3, 0], heading: 'E', wagons: ['wagon1'] }],
+      station: [5, 4],
+    };
+    const compiled = compileLevel(small);
+    expect([compiled.track.width, compiled.track.height]).toEqual([8, 5]);
+    expect(issuesOf({ ...small, station: [8, 4] })).toContain('error: station at (8,4) is outside the 8×5 field');
   });
 
   test('лишние поля и версия', () => {

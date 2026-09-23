@@ -152,6 +152,14 @@ class LevelEditor {
   }
 
   changed(): void {
+    // Размер канваса — по размеру поля (уровни бывают не только 15×10)
+    const width = (this.state.grid[0]?.length ?? 0) * CELL_SIZE;
+    const height = this.state.grid.length * CELL_SIZE;
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.backgroundCanvas = generateBackground(this.canvas, this.state.grid, false);
+    }
     this.validation = validate(this.state);
     this.configTextarea.value = formatLevelJson(toV2(this.state));
     this.renderIssues();

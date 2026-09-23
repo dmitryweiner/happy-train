@@ -165,6 +165,25 @@ describe('Game UI', () => {
     expect(localStorage.getItem(STORAGE_KEYS.CURRENT_LEVEL)).toBe('1');
   });
 
+  test('размер поля берётся из уровня', async () => {
+    const small: LegacyLevel = {
+      grid: [
+        ['┌', '-', '-', '-', '┐'],
+        ['|', ' ', ' ', ' ', '|'],
+        ['└', '-', '-', '-', '┘'],
+      ],
+      semaphores: [],
+      trains: [[{ type: 'locomotive', x: 2, y: 0, direction: 0 }]],
+      targetPoint: { x: 2, y: 2 },
+    };
+    const game = await startGame([small]);
+    expect([game.canvas.width, game.canvas.height]).toEqual([200, 120]);
+    expect(document.documentElement.style.getPropertyValue('--board-w')).toBe('204px');
+    game.canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 120, right: 200, bottom: 120, x: 0, y: 0, toJSON() {} });
+    runUntil(() => isShown('gameWin'));
+    expect(isShown('gameWin')).toBe(true);
+  });
+
   test('клик по номеру уровня ставит игру на паузу', async () => {
     const game = await startGame();
     frame(5);

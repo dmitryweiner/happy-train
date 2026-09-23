@@ -136,14 +136,20 @@ export class Game {
     Storage.remove(STORAGE_KEYS.CURRENT_LEVEL);
   }
 
-  setupCanvas() {
-    this.canvas.width = GRID_WIDTH * CELL_SIZE;
-    this.canvas.height = GRID_HEIGHT * CELL_SIZE;
+  // Размер поля — из уровня (§2.1)
+  setupCanvas(columns = GRID_WIDTH, rows = GRID_HEIGHT) {
+    const width = columns * CELL_SIZE;
+    const height = rows * CELL_SIZE;
+    this.canvas.width = width;
+    this.canvas.height = height;
     if (this.boardViewport) {
       this.boardViewport.style.boxSizing = "content-box";
-      this.boardViewport.style.width = `${GRID_WIDTH * CELL_SIZE}px`;
-      this.boardViewport.style.height = `${GRID_HEIGHT * CELL_SIZE}px`;
+      this.boardViewport.style.width = `${width}px`;
+      this.boardViewport.style.height = `${height}px`;
     }
+    // Мобильная подгонка в styles.css считает масштаб от этих размеров (+ рамка 2px)
+    document.documentElement.style.setProperty('--board-w', `${width + 4}px`);
+    document.documentElement.style.setProperty('--board-h', `${height + 4}px`);
   }
 
   setViewZoom(zoom: number): void {
@@ -205,6 +211,7 @@ export class Game {
     
     this.world = createWorld(currentLevel);
     this.timeAccumulator = 0;
+    this.setupCanvas(this.world.track.width, this.world.track.height);
     
     // Создаем фон
     this.backgroundCanvas = generateBackground(this.canvas, this.world.grid);
@@ -281,7 +288,7 @@ export class Game {
         CELL_SIZE
       );
 
-      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+      if (x >= 0 && x < this.world.track.width && y >= 0 && y < this.world.track.height) {
         clickCell(this.world, x, y);
       }
     };

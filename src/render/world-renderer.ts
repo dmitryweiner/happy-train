@@ -1,4 +1,3 @@
-import { GRID_HEIGHT, GRID_WIDTH } from '../constants';
 import { isSwitchCell } from '../core/legacy-import';
 import { getSwitchState, isSemaphoreAt, type World } from '../core/world';
 import { drawCell, drawSemaphoreCell, drawStationIcon, drawSwitchCell, drawTrainPart } from './graphics';
@@ -17,8 +16,8 @@ export function drawWorld(
   const targetPoint = world.level.targetPoint;
 
   // Draw grid (rails only)
-  for (let y = 0; y < GRID_HEIGHT; y++) {
-    for (let x = 0; x < GRID_WIDTH; x++) {
+  for (let y = 0; y < world.grid.length; y++) {
+    for (let x = 0; x < world.grid[y].length; x++) {
       const cellType = world.grid[y][x];
 
       // Станция — подложка: стрелка или семафор на ней рисуются со своим состоянием (§2.3.6)

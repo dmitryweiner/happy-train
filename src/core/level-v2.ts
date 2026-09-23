@@ -1,6 +1,6 @@
 // Формат уровня v2 (FIXIN-PLAN.md §4): грид из токенов соединений + объекты с явными координатами.
 // compileLevel проверяет уровень и собирает из него LegacyLevel, на котором пока работает движок.
-import { DIRECTIONS, GRID_HEIGHT, GRID_WIDTH } from '../constants';
+import { DIRECTIONS, FIELD_MAX_HEIGHT, FIELD_MAX_WIDTH, FIELD_MIN_SIZE } from '../constants';
 import type { LegacyLevel, TrainPartConfig, WagonType } from '../types';
 import { legacySymbolForToken } from './legacy-import';
 import {
@@ -84,10 +84,16 @@ export function compileLevel(input: unknown): CompiledLevel {
   }
   const grid = level.grid as string[][];
 
-  // --- Размер поля: движок пока рисует и считает только 15×10
-  if (grid.length !== GRID_HEIGHT || grid.some(row => row.length !== GRID_WIDTH)) {
-    const widths = [...new Set(grid.map(row => row.length))].join('/');
-    error(`grid must be ${GRID_WIDTH}×${GRID_HEIGHT} cells (got ${widths}×${grid.length}); other sizes are not supported yet`);
+  // --- Размер поля: из грида, в пределах FIELD_*
+  const height = grid.length;
+  const width = grid[0]?.length ?? 0;
+  const widths = [...new Set(grid.map(row => row.length))];
+  if (widths.length > 1) {
+    error(`grid rows must have the same length (got ${widths.join(', ')})`);
+    fail();
+  }
+  if (width < FIELD_MIN_SIZE || height < FIELD_MIN_SIZE || width > FIELD_MAX_WIDTH || height > FIELD_MAX_HEIGHT) {
+    error(`grid is ${width}×${height}; allowed from ${FIELD_MIN_SIZE}×${FIELD_MIN_SIZE} to ${FIELD_MAX_WIDTH}×${FIELD_MAX_HEIGHT}`);
     fail();
   }
 
@@ -106,7 +112,7 @@ export function compileLevel(input: unknown): CompiledLevel {
       }
     })
   );
-  const track: TrackMap = { width: GRID_WIDTH, height: GRID_HEIGHT, cells };
+  const track: TrackMap = { width, height, cells };
   for (const issue of validateTrackMap(track)) {
     (issue.severity === 'error' ? errors : warnings).push(issue);
   }
@@ -122,14 +128,14 @@ export function compileLevel(input: unknown): CompiledLevel {
   };
 
   const shapeAt = (x: number, y: number) => classifyCell(cells[y][x].connections);
-  const inField = ([x, y]: Point) => x >= 0 && y >= 0 && x < GRID_WIDTH && y < GRID_HEIGHT;
+  const inField = ([x, y]: Point) => x >= 0 && y >= 0 && x < width && y < height;
   const checkPoint = (what: string, point: unknown): point is Point => {
     if (!isPoint(point)) {
       error(`${what}: "at" must be [x, y] with integer coordinates`);
       return false;
     }
     if (!inField(point)) {
-      error(`${what} at (${point[0]},${point[1]}) is outside the ${GRID_WIDTH}×${GRID_HEIGHT} field`, point[0], point[1]);
+      error(`${what} at (${point[0]},${point[1]}) is outside the ${width}×${height} field`, point[0], point[1]);
       return false;
     }
     return true;
