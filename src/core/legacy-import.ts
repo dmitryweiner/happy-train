@@ -1,6 +1,8 @@
 // Импорт старого формата уровней (символы псевдографики) в топологию путей.
 import { CELL_TYPES, type CellType } from '../constants';
-import type { Connection, TrackMap } from './track';
+import type { LegacyLevel } from '../types';
+import type { LevelV2 } from './level-v2';
+import { formatToken, type Connection, type Side, type TrackMap } from './track';
 
 // Геометрия поворотов совпадает с movement.ts: например, "┐" — дуга с центром в левом нижнем углу, соединяет W и S.
 export const LEGACY_CELL_CONNECTIONS: Record<CellType, readonly Connection[]> = {
@@ -37,5 +39,44 @@ export function legacyGridToTrackMap(grid: readonly (readonly CellType[])[]): Tr
         return { connections };
       })
     ),
+  };
+}
+
+// Направление в радианах → сторона, куда едет часть поезда (допуск — на случай неточной записи π)
+function headingFromDirection(direction: number): Side {
+  const quarter = Math.round(direction / (Math.PI / 2));
+  const normalized = ((quarter % 4) + 4) % 4;
+  if (Math.abs(direction - quarter * (Math.PI / 2)) > 1e-6) {
+    throw new Error(`direction ${direction} is not a multiple of 90°`);
+  }
+  return (['E', 'S', 'W', 'N'] as const)[normalized];
+}
+
+// Старый уровень → формат v2. Вагоны в v2 задаются только типами: компилятор сам ставит их за локомотивом.
+export function legacyLevelToV2(level: LegacyLevel): LevelV2 {
+  const grid = legacyGridToTrackMap(level.grid).cells.map(row => row.map(cell => formatToken(cell.connections)));
+  return {
+    $schema: './level.schema.json',
+    version: 2,
+    grid,
+    ...(level.switches?.length
+      ? { switches: level.switches.map(sw => ({ at: [sw.x, sw.y], initial: sw.isStraight ? 'straight' : 'diverging' })) }
+      : {}),
+    semaphores: level.semaphores.map(semaphore => ({
+      at: [semaphore.x, semaphore.y],
+      initial: semaphore.isOpen ? 'open' : 'closed',
+    })),
+    trains: level.trains.map(train => {
+      const [head, ...wagons] = train;
+      return {
+        at: [head.x, head.y],
+        heading: headingFromDirection(head.direction),
+        wagons: wagons.map(wagon => {
+          if (wagon.type !== 'wagon') throw new Error(`train part at (${wagon.x},${wagon.y}) after the head must be a wagon`);
+          return wagon.wagonType;
+        }),
+      };
+    }),
+    station: [level.targetPoint.x, level.targetPoint.y],
   };
 }

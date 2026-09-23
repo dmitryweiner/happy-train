@@ -86,6 +86,8 @@ Scripts:
 | `yarn test:golden` | golden snapshots: `src/` engine vs recorded legacy behaviour |
 | `yarn test:golden:update` | re-record golden snapshots from the frozen legacy engine |
 | `yarn test:visual` / `yarn test:visual:update` | visual regression tests / re-create reference images |
+| `yarn level validate levels/*.json` | check levels (format v2): schema, track connectivity, trains |
+| `yarn level render levels/01.json` | ASCII preview of a level |
 | `yarn solve:legacy [level...]` | brute-force solver for levels on the legacy engine |
 
 `package.json` declares `"engines": { "node": ">=22" }` and uses **`canvas` v3**, which ships prebuilt binaries for Node 22 on darwin arm64 (so you usually do not need Homebrew Cairo). If `yarn install` still tries to compile from source and fails, install system libraries then reinstall, for example on macOS:
@@ -106,12 +108,14 @@ happy-train/
 ├── src/
 │   ├── main.ts         # Game bootstrap
 │   ├── constants.ts    # Game constants
-│   ├── levels.ts       # Level definitions
+│   ├── levels.ts       # Loads and compiles levels/*.json
 │   ├── types.ts        # Shared types
 │   ├── core/           # Simulation without DOM: world state, step, movement
 │   ├── render/         # Canvas rendering
 │   ├── ui/             # Game controller: DOM, input, zoom/pan, screens, storage
 │   └── editor/         # Level editor
+├── levels/            # Levels in format v2 (JSON) + level.schema.json
+├── tools/level.ts     # Level CLI: validate / render / migrate
 ├── styles.css         # Game styling
 ├── editor.css         # Editor styling
 ├── docs/              # Production build (served by GitHub Pages)

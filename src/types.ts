@@ -23,6 +23,8 @@ export interface LegacyLevel {
   semaphores: SemaphoreConfig[];
   trains: TrainPartConfig[][];
   targetPoint: GridPoint;
+  // Начальные положения стрелок; не указанные стоят «прямо»
+  switches?: { x: number; y: number; isStraight: boolean }[];
 }
 
 // Часть поезда во время игры

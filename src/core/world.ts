@@ -41,6 +41,10 @@ export function createWorld(level: LegacyLevel): World {
       }
     }
   }
+  for (const sw of level.switches ?? []) {
+    const state = switchStates[cellKey(sw.x, sw.y)];
+    if (state) state.isStraight = sw.isStraight;
+  }
 
   // Initialize semaphores from level data
   const semaphoreStates: World['semaphoreStates'] = {};
