@@ -12,8 +12,12 @@ window.addEventListener("load", () => {
 
   // Handle PLAY button click
   startGameBtn.addEventListener("click", async () => {
-    // Load train images first
-    await loadTrainImages();
+    // Load train images first. Если картинки не загрузились, игра всё равно стартует: поезд рисуется прямоугольниками
+    try {
+      await loadTrainImages();
+    } catch (error) {
+      console.error(error);
+    }
 
     // Hide welcome screen
     welcomeScreen.style.display = "none";

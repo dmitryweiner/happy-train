@@ -1,5 +1,5 @@
 // Графические функции для игры
-import { CELL_SIZE, CELL_TYPES, GRID_HEIGHT, GRID_WIDTH, RAIL_WIDTH, TIE_SPACING, TIE_WIDTH, type CellType } from '../constants';
+import { CELL_SIZE, CELL_TYPES, RAIL_WIDTH, TIE_SPACING, TIE_WIDTH, type CellType } from '../constants';
 import type { TrainPart } from '../types';
 
 // Параметры отрисовки. Изменяемы, чтобы тесты могли рисовать клетки с другими размерами.
@@ -26,6 +26,7 @@ export interface DrawContext {
   textAlign: string;
   textBaseline: string;
   beginPath(): void;
+  closePath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void;
@@ -72,6 +73,15 @@ const COLORS = {
   // Semaphore colors
   SEMAPHORE_RED: "#ff0000",
   SEMAPHORE_GREEN: "#00ff00",
+
+  // Station house
+  HOUSE_WALL: "#f5deb3",
+  HOUSE_ROOF: "#c0392b",
+  HOUSE_DOOR: "#6b3e26",
+
+  // Поезд, если картинки не загрузились
+  TRAIN_FALLBACK_LOCOMOTIVE: "#2e7d32",
+  TRAIN_FALLBACK_WAGON: "#607d8b",
 };
 
 const NATURE_OBJECT_PROBABILITY = 0.1;
@@ -103,8 +113,10 @@ export function generateBackground<C extends CanvasLike>(
   bgCtx.fillStyle = COLORS.GRASS_BASE; // LightGreen - базовый цвет травы
   bgCtx.fillRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
   
-  // Количество зеленых пятен (примерно 8 на клетку)
-  const totalPatches = Math.floor(GRID_WIDTH * GRID_HEIGHT * 8);
+  // Количество зеленых пятен (примерно 8 на клетку поля)
+  const columns = Math.ceil(backgroundCanvas.width / P.cellSize);
+  const rows = Math.ceil(backgroundCanvas.height / P.cellSize);
+  const totalPatches = Math.floor(columns * rows * 8);
   
   for (let i = 0; i < totalPatches; i++) {
     // Используем i как часть seed для случайности
@@ -132,8 +144,10 @@ export function generateBackground<C extends CanvasLike>(
       for (let x = 0; x < grid[y].length; x++) {
         if (grid[y][x] === CELL_TYPES.EMPTY) {
           const objects = ['🏔️', '🌋', '🌲', '🌳', '🌾', '🌵', '🌱', '☘️', '🌿', '🏕️', '🛖', '🌼'];
-          const randomObject = objects[Math.floor(Math.random() * objects.length)];
-          const shouldDrawObject = Math.random() < NATURE_OBJECT_PROBABILITY;
+          // Детерминированно по номеру клетки: фон одинаков при каждом запуске уровня (§2.3.9)
+          const cellSeed = 100_000 + (y * grid[y].length + x) * 10;
+          const randomObject = objects[Math.floor(seededRandom(cellSeed) * objects.length)];
+          const shouldDrawObject = seededRandom(cellSeed + 1) < NATURE_OBJECT_PROBABILITY;
           if (shouldDrawObject) {
             const centerX = x * P.cellSize + P.cellSize / 2;
             const centerY = y * P.cellSize + P.cellSize / 2;        
@@ -151,8 +165,8 @@ export function generateBackground<C extends CanvasLike>(
 
   // Рисуем сетку для ориентировки
   bgCtx.strokeStyle = COLORS.GRID_LINE;
-  for (let y = 0; y < GRID_HEIGHT; y++) {
-    for (let x = 0; x < GRID_WIDTH; x++) {
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
       bgCtx.strokeRect(x * P.cellSize, y * P.cellSize, P.cellSize, P.cellSize);
     }
   }
@@ -331,14 +345,19 @@ export function drawCell(ctx: DrawContext, x: number, y: number, cellType: strin
       // Пустая клетка - ничего не рисуем
       break;
 
-    default:
-      // Для других типов клеток оставляем текстовую отрисовку
-      ctx.fillStyle = COLORS.BLACK;
-      ctx.font = "20px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(cellType, centerX, centerY);
+    default: {
+      // Неизвестный тип клетки — красный крест (фигурами, а не текстом: не зависит от шрифтов)
+      const arm = P.cellSize * 0.25;
+      ctx.strokeStyle = COLORS.SEMAPHORE_RED;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(centerX - arm, centerY - arm);
+      ctx.lineTo(centerX + arm, centerY + arm);
+      ctx.moveTo(centerX + arm, centerY - arm);
+      ctx.lineTo(centerX - arm, centerY + arm);
+      ctx.stroke();
       break;
+    }
   }
 }
 
@@ -363,10 +382,15 @@ export function loadTrainImages(): Promise<void> {
     return Promise.resolve();
   }
   
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
     let loadedCount = 0;
     const totalImages = 3;
-    
+    // Картинка не загрузилась — сообщаем, а не ждём вечно (§2.3.8)
+    const onImageError = (event: Event | string) => {
+      const src = typeof event === 'string' ? event : (event.target as HTMLImageElement | null)?.src;
+      reject(new Error(`Failed to load image ${src ?? ''}`));
+    };
+
     function onImageLoad() {
       loadedCount++;
       if (loadedCount === totalImages) {
@@ -378,15 +402,18 @@ export function loadTrainImages(): Promise<void> {
     // Load locomotive image
     trainImages.locomotive = new Image();
     trainImages.locomotive.onload = onImageLoad;
+    trainImages.locomotive.onerror = onImageError;
     trainImages.locomotive.src = ASSETS_PATH + 'locomotive.png';
     
     // Load wagon images
     trainImages.wagon1 = new Image();
     trainImages.wagon1.onload = onImageLoad;
+    trainImages.wagon1.onerror = onImageError;
     trainImages.wagon1.src = ASSETS_PATH + 'wagon1.png';
 
     trainImages.wagon2 = new Image();
     trainImages.wagon2.onload = onImageLoad;
+    trainImages.wagon2.onerror = onImageError;
     trainImages.wagon2.src = ASSETS_PATH + 'wagon2.png';
   });
 }
@@ -407,8 +434,12 @@ export function drawTrainPart(
     image = part.wagonType ? trainImages[part.wagonType] : null;
   }
   
-  if (!image) {
-    throw new Error(`No image for train part "${part.type}"`);
+  if (!image || !image.complete || image.width === 0) {
+    // Картинки нет (не загрузилась или отрисовка без DOM) — рисуем простой прямоугольник
+    ctx.fillStyle = part.type === 'locomotive' ? COLORS.TRAIN_FALLBACK_LOCOMOTIVE : COLORS.TRAIN_FALLBACK_WAGON;
+    ctx.fillRect(-P.cellSize * 0.4, -P.cellSize * 0.25, P.cellSize * 0.8, P.cellSize * 0.5);
+    ctx.restore();
+    return;
   }
 
   // Calculate scaled size while preserving aspect ratio
@@ -561,14 +592,34 @@ export function drawStationCell(ctx: DrawContext, x: number, y: number, cellType
   drawCell(ctx, x, y, cellType);
 }
 
-// Домик станции — подложка клетки; рельсы, стрелка или семафор рисуются поверх
+// Домик станции — подложка клетки; рельсы, стрелка или семафор рисуются поверх.
+// Фигурами, а не эмодзи: одинаково во всех браузерах и системах (§2.5)
 export function drawStationIcon(ctx: DrawContext, x: number, y: number): void {
-  const centerX = x * P.cellSize + P.cellSize / 2;
-  const centerY = y * P.cellSize + P.cellSize / 2;
+  const s = P.cellSize;
+  const left = x * s;
+  const top = y * s;
 
-  ctx.font = `${P.cellSize * 0.8}px Arial`; // Size is about half the cell
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = COLORS.BLACK; // Black color for the house icon
-  ctx.fillText("🏠", centerX, centerY);
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = COLORS.BLACK;
+
+  // Стены
+  ctx.fillStyle = COLORS.HOUSE_WALL;
+  ctx.fillRect(left + s * 0.22, top + s * 0.45, s * 0.56, s * 0.43);
+  ctx.strokeRect(left + s * 0.22, top + s * 0.45, s * 0.56, s * 0.43);
+
+  // Крыша
+  ctx.fillStyle = COLORS.HOUSE_ROOF;
+  ctx.beginPath();
+  ctx.moveTo(left + s * 0.12, top + s * 0.47);
+  ctx.lineTo(left + s * 0.5, top + s * 0.12);
+  ctx.lineTo(left + s * 0.88, top + s * 0.47);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Дверь
+  ctx.fillStyle = COLORS.HOUSE_DOOR;
+  ctx.fillRect(left + s * 0.43, top + s * 0.62, s * 0.14, s * 0.26);
+  ctx.restore();
 }

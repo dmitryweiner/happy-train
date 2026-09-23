@@ -16,6 +16,7 @@ function createMockContext() {
     save() { calls.push(['save']); },
     restore() { calls.push(['restore']); },
     beginPath() { calls.push(['beginPath']); },
+    closePath() { calls.push(['closePath']); },
     moveTo(x: number, y: number) { calls.push(['moveTo', x, y]); },
     lineTo(x: number, y: number) { calls.push(['lineTo', x, y]); },
     arc(x: number, y: number, radius: number, startAngle: number, endAngle: number) {
