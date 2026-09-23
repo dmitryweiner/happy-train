@@ -24,6 +24,18 @@ export const LEGACY_CELL_CONNECTIONS: Record<CellType, readonly Connection[]> = 
   [CELL_TYPES.SWITCH_RIGHT_UP_H]: ['EW', 'NE'],
 };
 
+// Обратная таблица: канонический токен v2 → символ старого формата
+const LEGACY_BY_TOKEN = new Map<string, CellType>(
+  (Object.entries(LEGACY_CELL_CONNECTIONS) as [CellType, readonly Connection[]][]).map(([cellType, connections]) => [
+    formatToken(connections),
+    cellType,
+  ])
+);
+
+export function legacySymbolForToken(token: string): CellType | undefined {
+  return LEGACY_BY_TOKEN.get(token);
+}
+
 // Стрелка в старом формате — два символа: "┐|", "-┌" ...
 export function isSwitchCell(cellType: string): boolean {
   return (LEGACY_CELL_CONNECTIONS[cellType as CellType]?.length ?? 0) === 2 && cellType !== CELL_TYPES.RAIL_H_V;

@@ -1,470 +1,294 @@
-import { CELL_SIZE, GRID_HEIGHT, GRID_WIDTH } from '../constants';
-import { drawCell, drawSemaphoreCell, drawStationCell, drawSwitchCell, drawTrainPart, generateBackground, loadTrainImages } from '../render/graphics';
+// Редактор уровней: DOM, палитра инструментов, отрисовка. Логика — в model.ts.
+import { CELL_SIZE, type CellType } from '../constants';
+import { isSwitchCell, legacyLevelToV2 } from '../core/legacy-import';
+import { formatLevelJson } from '../core/level-v2';
+import { SIDE_DIRECTION } from '../core/geometry';
 import { levels } from '../levels';
-import type { GridPoint, SemaphoreConfig, TrainPartConfig } from '../types';
+import {
+  drawCell,
+  drawSemaphoreCell,
+  drawStationIcon,
+  drawSwitchCell,
+  drawTrainPart,
+  generateBackground,
+  loadTrainImages,
+} from '../render/graphics';
+import type { WagonType } from '../types';
+import { clientToGridCell } from '../ui/viewport';
+import {
+  addWagon,
+  cycleSemaphore,
+  emptyState,
+  fromV2,
+  placeLocomotive,
+  placeTrack,
+  removeObjectsAt,
+  setStation,
+  toV2,
+  trainIndexAt,
+  validate,
+  type EditorState,
+  type ValidationResult,
+} from './model';
 
-// Level Editor
 type ToolType = 'track' | 'semaphore' | 'station' | 'locomotive' | 'wagon1' | 'wagon2';
 
-interface EditorConfig {
-    grid: string[][];
-    semaphores: SemaphoreConfig[];
-    trains: TrainPartConfig[][];
-    targetPoint: GridPoint | null;
+function requireElement<T extends HTMLElement = HTMLElement>(id: string): T {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`Element #${id} not found`);
+  return element as T;
 }
 
 class LevelEditor {
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    configTextarea: HTMLTextAreaElement;
-    currentTool: HTMLElement | null = null;
-    toolType: ToolType | null = null;
-    toolValue: string | null = null;
-    grid: string[][] = [];
-    semaphores: SemaphoreConfig[] = [];
-    trains: TrainPartConfig[][] = [];
-    targetPoint: GridPoint | null = null;
-    backgroundCanvas!: HTMLCanvasElement;
+  readonly canvas = requireElement<HTMLCanvasElement>('editorCanvas');
+  readonly ctx: CanvasRenderingContext2D;
+  readonly configTextarea = requireElement<HTMLTextAreaElement>('level-config');
+  readonly issuesPanel = requireElement('level-issues');
+  toolType: ToolType | null = null;
+  toolValue: string | null = null;
+  state: EditorState = emptyState();
+  validation: ValidationResult = validate(this.state);
+  backgroundCanvas: HTMLCanvasElement;
 
-    constructor() {
-        this.canvas = document.getElementById('editorCanvas') as HTMLCanvasElement;
-        const ctx = this.canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('2D context is not available');
-        }
-        this.ctx = ctx;
-        this.configTextarea = document.getElementById('level-config') as HTMLTextAreaElement;
-        
-        // Editor state
-        this.currentTool = null;
-        this.toolType = null;
-        this.toolValue = null;
-        
-        // Level data
-        this.grid = [];
-        this.semaphores = [];
-        this.trains = [];
-        this.targetPoint = null;
-        
-        // Initialize
-        this.initializeGrid();
-        this.setupEventListeners();
-        this.setupCanvas();
-        this.initializeEditor();
-    }
-    
-    async initializeEditor(): Promise<void> {
-        // Load train images first
-        await loadTrainImages();
-        
-        // Create tool previews after images are loaded
-        this.createToolPreviews();
-        
-        // Initial render and config update
-        this.render();
-        this.updateConfig();
-    }
-    
-    initializeGrid() {
-        // Create empty grid
-        this.grid = [];
-        for (let y = 0; y < GRID_HEIGHT; y++) {
-            this.grid[y] = [];
-            for (let x = 0; x < GRID_WIDTH; x++) {
-                this.grid[y][x] = " ";
-            }
-        }
-        
-        // Reset other data
-        this.semaphores = [];
-        this.trains = [];
-        this.targetPoint = null;
-    }
-    
-    setupCanvas() {
-        // Set canvas size based on grid
-        this.canvas.width = GRID_WIDTH * CELL_SIZE;
-        this.canvas.height = GRID_HEIGHT * CELL_SIZE;
-        
-        // Generate background
-        this.backgroundCanvas = generateBackground(this.canvas, this.grid, false);
-    }
-    
-    setupEventListeners() {
-        // Tool selection
-        document.querySelectorAll<HTMLElement>('.tool-item').forEach(item => {
-            item.addEventListener('click', () => {
-                this.selectTool(item);
-            });
-        });
-        
-        // Canvas clicks
-        this.canvas.addEventListener('click', (e) => {
-            this.handleCanvasClick(e);
-        });
-        
-        // Control buttons
-        document.getElementById('clear-grid')?.addEventListener('click', () => {
-            this.clearGrid();
-        });
-        
-        document.getElementById('load-level')?.addEventListener('click', () => {
-            this.loadLevel();
-        });
-        
-        document.getElementById('save-level')?.addEventListener('click', () => {
-            this.saveLevel();
-        });
-        
-        document.getElementById('import-config')?.addEventListener('click', () => {
-            this.importConfig();
-        });
-        
-        document.getElementById('export-config')?.addEventListener('click', () => {
-            this.exportConfig();
-        });
-    }
-    
-    selectTool(toolItem: HTMLElement): void {
-        // Remove selection from other tools
-        document.querySelectorAll('.tool-item').forEach(item => {
-            item.classList.remove('selected');
-        });
-        
-        // Select current tool
-        toolItem.classList.add('selected');
-        
-        this.toolType = (toolItem.dataset.type ?? null) as ToolType | null;
-        this.toolValue = toolItem.dataset.value ?? null;
-        this.currentTool = toolItem;
-    }
-    
-    handleCanvasClick(e: MouseEvent): void {
-        if (!this.currentTool) return;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
-        const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
-        
-        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return;
-        
-        this.placeTool(x, y);
-    }
-    
+  constructor() {
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) throw new Error('2D context is not available');
+    this.ctx = ctx;
+    this.backgroundCanvas = generateBackground(this.canvas, this.state.grid, false);
+    this.setupEventListeners();
+    void this.initialize();
+  }
 
-    
-    placeTool(x: number, y: number): void {
-        switch (this.toolType) {
-            case 'track':
-                this.grid[y][x] = this.toolValue ?? ' ';
-                break;
-                
-            case 'semaphore': {
-                // Check if semaphore already exists at this position
-                const existingSemaphoreIndex = this.semaphores.findIndex(s => s.x === x && s.y === y);
-                if (existingSemaphoreIndex !== -1) {
-                    // Remove existing semaphore
-                    this.semaphores.splice(existingSemaphoreIndex, 1);
-                } else {
-                    // Add new semaphore
-                    this.semaphores.push({
-                        x: x,
-                        y: y,
-                        isOpen: true
-                    });
-                }
-                break;
-            }
-                
-            case 'station':
-                // Check if station already exists at this position
-                if (this.targetPoint && this.targetPoint.x === x && this.targetPoint.y === y) {
-                    // Remove existing station
-                    this.targetPoint = null;
-                } else {
-                    // Add new station
-                    this.targetPoint = { x: x, y: y };
-                }
-                break;
-                
-            case 'locomotive':
-            case 'wagon1':
-            case 'wagon2':
-                this.addTrainPart(x, y, this.toolType);
-                break;
-        }
-        
-        this.render();
-        this.updateConfig();
+  async initialize(): Promise<void> {
+    try {
+      await loadTrainImages();
+    } catch (error) {
+      console.error(error);
     }
-    
-    addTrainPart(x: number, y: number, type: 'locomotive' | 'wagon1' | 'wagon2'): void {
-        // Check if there's already a train part at this position
-        let existingPart: TrainPartConfig | null = null;
-        let existingTrainIndex = -1;
-        let existingPartIndex = -1;
-        
-        for (let trainIndex = 0; trainIndex < this.trains.length; trainIndex++) {
-            const train = this.trains[trainIndex];
-            for (let partIndex = 0; partIndex < train.length; partIndex++) {
-                if (train[partIndex].x === x && train[partIndex].y === y) {
-                    existingPart = train[partIndex];
-                    existingTrainIndex = trainIndex;
-                    existingPartIndex = partIndex;
-                    break;
-                }
-            }
-            if (existingPart) break;
+    this.createToolPreviews();
+    this.changed();
+  }
+
+  setupEventListeners(): void {
+    document.querySelectorAll<HTMLElement>('.tool-item').forEach(item => {
+      item.addEventListener('click', () => this.selectTool(item));
+    });
+    this.canvas.addEventListener('click', e => this.handleCanvasClick(e));
+    // Правый клик удаляет объекты в клетке
+    this.canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const cell = this.cellFromEvent(e);
+      if (!cell) return;
+      removeObjectsAt(this.state, cell.x, cell.y, this.validation.compiled ?? undefined);
+      this.changed();
+    });
+    requireElement('clear-grid').addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear the entire grid?')) {
+        this.state = emptyState();
+        this.changed();
+      }
+    });
+    requireElement('load-level').addEventListener('click', () => this.loadLevel());
+    requireElement('save-level').addEventListener('click', () => void this.copyConfig());
+    requireElement('import-config').addEventListener('click', () => this.importConfig());
+    requireElement('export-config').addEventListener('click', () => void this.copyConfig());
+  }
+
+  selectTool(toolItem: HTMLElement): void {
+    document.querySelectorAll('.tool-item').forEach(item => item.classList.remove('selected'));
+    toolItem.classList.add('selected');
+    this.toolType = (toolItem.dataset.type ?? null) as ToolType | null;
+    this.toolValue = toolItem.dataset.value ?? null;
+  }
+
+  // Клетка под курсором с учётом CSS-масштаба канваса (§2.4)
+  cellFromEvent(e: MouseEvent): { x: number; y: number } | null {
+    const { gridX, gridY } = clientToGridCell(
+      e.clientX,
+      e.clientY,
+      this.canvas.getBoundingClientRect(),
+      this.canvas.width,
+      this.canvas.height,
+      CELL_SIZE
+    );
+    const height = this.state.grid.length;
+    const width = this.state.grid[0]?.length ?? 0;
+    if (gridX < 0 || gridY < 0 || gridX >= width || gridY >= height) return null;
+    return { x: gridX, y: gridY };
+  }
+
+  handleCanvasClick(e: MouseEvent): void {
+    const cell = this.cellFromEvent(e);
+    if (!cell || !this.toolType) return;
+    const { x, y } = cell;
+    switch (this.toolType) {
+      case 'track':
+        placeTrack(this.state, x, y, (this.toolValue ?? ' ') as CellType);
+        break;
+      case 'semaphore':
+        cycleSemaphore(this.state, x, y);
+        break;
+      case 'station':
+        setStation(this.state, x, y);
+        break;
+      case 'locomotive':
+        placeLocomotive(this.state, x, y);
+        break;
+      case 'wagon1':
+      case 'wagon2': {
+        // Вагон добавляется в хвост поезда, по части которого кликнули
+        const compiled = this.validation.compiled;
+        const byHead = this.state.trains.findIndex(t => t.x === x && t.y === y);
+        const trainIndex = byHead !== -1 ? byHead : compiled ? trainIndexAt(compiled, x, y) : -1;
+        if (trainIndex === -1) {
+          this.showMessage('Click a locomotive or a wagon of a train to add a wagon to it');
+          return;
         }
-        
-        // If there's already a train part at this position, remove it
-        if (existingPart) {
-            this.trains[existingTrainIndex].splice(existingPartIndex, 1);
-            
-            // Remove empty trains
-            this.trains = this.trains.filter(train => train.length > 0);
-            return; // Don't add new part, just remove existing one
+        addWagon(this.state, trainIndex, this.toolType as WagonType);
+        break;
+      }
+    }
+    this.changed();
+  }
+
+  changed(): void {
+    this.validation = validate(this.state);
+    this.configTextarea.value = formatLevelJson(toV2(this.state));
+    this.renderIssues();
+    this.render();
+  }
+
+  renderIssues(): void {
+    const { issues, compiled } = this.validation;
+    this.issuesPanel.replaceChildren();
+    const summary = document.createElement('p');
+    summary.className = compiled ? 'issues-ok' : 'issues-error';
+    summary.textContent = compiled
+      ? `Level is valid${issues.length ? `, ${issues.length} warning(s)` : ''}`
+      : `${issues.filter(i => i.severity === 'error').length} error(s)`;
+    this.issuesPanel.append(summary);
+    const list = document.createElement('ul');
+    for (const issue of issues) {
+      const item = document.createElement('li');
+      item.className = `issue-${issue.severity}`;
+      item.textContent = `${issue.severity}: ${issue.message}`;
+      list.append(item);
+    }
+    this.issuesPanel.append(list);
+  }
+
+  showMessage(text: string): void {
+    const note = document.createElement('p');
+    note.className = 'issues-note';
+    note.textContent = text;
+    this.issuesPanel.prepend(note);
+  }
+
+  render(): void {
+    const { ctx, state } = this;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.drawImage(this.backgroundCanvas, 0, 0);
+
+    state.grid.forEach((row, y) =>
+      row.forEach((cellType, x) => {
+        if (state.station?.x === x && state.station.y === y) drawStationIcon(ctx, x, y);
+        const semaphore = state.semaphores.find(s => s.x === x && s.y === y);
+        if (isSwitchCell(cellType)) {
+          const diverging = state.divergingSwitches.some(s => s.x === x && s.y === y);
+          drawSwitchCell(ctx, x, y, cellType, !diverging);
+        } else if (semaphore) {
+          drawSemaphoreCell(ctx, x, y, cellType, semaphore.isOpen);
+        } else if (cellType !== ' ') {
+          drawCell(ctx, x, y, cellType);
         }
-        
-        // Create new train part
-        if (type === 'locomotive') {
-            const part: TrainPartConfig = { x: x, y: y, direction: 0, type: 'locomotive' };
-            // Create new train with locomotive
-            this.trains.push([part]);
-        } else {
-            const part: TrainPartConfig = { x: x, y: y, direction: 0, type: 'wagon', wagonType: type };
-            
-            // Try to add to existing train or create new one
-            if (this.trains.length > 0) {
-                this.trains[this.trains.length - 1].push(part);
-            } else {
-                this.trains.push([part]);
-            }
-        }
-    }
-    
-    render() {
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Draw background
-        this.ctx.drawImage(this.backgroundCanvas, 0, 0);
-        
-        // Draw grid
-        this.drawGrid();
-        
-        // Draw semaphores
-        this.drawSemaphores();
-        
-        // Draw target point (station)
-        this.drawTargetPoint();
-        
-        // Draw trains
-        this.drawTrains();
-    }
-    
-    drawGrid() {
-        for (let y = 0; y < GRID_HEIGHT; y++) {
-            for (let x = 0; x < GRID_WIDTH; x++) {
-                const cellType = this.grid[y][x];
-                if (cellType && cellType !== " ") {
-                    // Check if this is a switch cell
-                    if (this.isSwitchCell(cellType)) {
-                        // Draw switch with default state (straight path)
-                        drawSwitchCell(this.ctx, x, y, cellType, true);
-                    } else {
-                        // Draw regular cell
-                        drawCell(this.ctx, x, y, cellType);
-                    }
-                }
-            }
-        }
-    }
-    
-    isSwitchCell(cellType: string): boolean {
-        const switchTypes = [
-            "┐|", "|┌", "┘|", "|└",  // Vertical switches
-            "┐-", "-┌", "┘-", "-└"   // Horizontal switches
-        ];
-        return switchTypes.includes(cellType);
-    }
-    
-    createToolPreviews() {
-        const toolItems = document.querySelectorAll<HTMLElement>('.tool-item[data-type="track"]');
-        const previewSize = 36;
-        
-        toolItems.forEach(toolItem => {
-            const preview = toolItem.querySelector('.tool-preview');
-            const cellType = toolItem.dataset.value;
-            if (!preview || cellType === undefined) {
-                return;
-            }
-            
-            if (cellType === " ") {
-                // Empty cell - keep existing styling
-                return;
-            }
-            
-            // Create mini canvas for preview
-            const canvas = document.createElement('canvas');
-            canvas.width = previewSize;
-            canvas.height = previewSize;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                return;
-            }
-            
-            // Set light background
-            ctx.fillStyle = '#f8f8f8';
-            ctx.fillRect(0, 0, previewSize, previewSize);
-            
-            // Calculate scale to fit CELL_SIZE into preview size
-            const scale = previewSize / CELL_SIZE;
-            
-            // Apply scaling
-            ctx.save();
-            ctx.scale(scale, scale);
-            
-            // Draw the cell type at scaled coordinates
-            if (this.isSwitchCell(cellType)) {
-                drawSwitchCell(ctx, 0, 0, cellType, true);
-            } else {
-                drawCell(ctx, 0, 0, cellType);
-            }
-            
-            ctx.restore();
-            
-            // Replace text preview with canvas
-            preview.innerHTML = '';
-            preview.appendChild(canvas);
+      })
+    );
+
+    // Если уровень собирается — поезда с вагонами в вычисленных позициях, иначе только локомотивы
+    const compiled = this.validation.compiled;
+    if (compiled) {
+      compiled.legacy.trains.flat().forEach(part => {
+        drawTrainPart(ctx, {
+          ...part,
+          pixelX: (part.x + 0.5) * CELL_SIZE,
+          pixelY: (part.y + 0.5) * CELL_SIZE,
+          wagonType: part.type === 'wagon' ? part.wagonType : undefined,
         });
-    }
-    
-    drawSemaphores() {
-        this.semaphores.forEach(semaphore => {
-            drawSemaphoreCell(this.ctx, semaphore.x, semaphore.y, "", semaphore.isOpen);
+      });
+    } else {
+      state.trains.forEach(train => {
+        drawTrainPart(ctx, {
+          type: 'locomotive',
+          pixelX: (train.x + 0.5) * CELL_SIZE,
+          pixelY: (train.y + 0.5) * CELL_SIZE,
+          direction: SIDE_DIRECTION[train.heading],
         });
+      });
     }
-    
-    drawTargetPoint() {
-        if (this.targetPoint) {
-            drawStationCell(this.ctx, this.targetPoint.x, this.targetPoint.y, "");
-        }
+  }
+
+  createToolPreviews(): void {
+    const previewSize = 36;
+    document.querySelectorAll<HTMLElement>('.tool-item[data-type="track"]').forEach(toolItem => {
+      const preview = toolItem.querySelector('.tool-preview');
+      const cellType = toolItem.dataset.value;
+      // Empty cell keeps its own styling
+      if (!preview || cellType === undefined || cellType === ' ') return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = previewSize;
+      canvas.height = previewSize;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#f8f8f8';
+      ctx.fillRect(0, 0, previewSize, previewSize);
+      ctx.save();
+      ctx.scale(previewSize / CELL_SIZE, previewSize / CELL_SIZE);
+      if (isSwitchCell(cellType)) {
+        drawSwitchCell(ctx, 0, 0, cellType, true);
+      } else {
+        drawCell(ctx, 0, 0, cellType);
+      }
+      ctx.restore();
+      preview.replaceChildren(canvas);
+    });
+  }
+
+  loadLevel(): void {
+    const answer = prompt(`Enter level number (1–${levels.length}):`);
+    const number = parseInt(answer ?? '', 10);
+    if (number >= 1 && number <= levels.length) {
+      this.state = fromV2(legacyLevelToV2(levels[number - 1]));
+      this.changed();
+    } else if (answer !== null) {
+      alert('Invalid level number');
     }
-    
-    drawTrains() {
-        this.trains.forEach(train => {
-            train.forEach(part => {
-                // Convert grid coordinates to pixel coordinates for rendering
-                const partWithPixels = {
-                    ...part,
-                    pixelX: (part.x + 0.5) * CELL_SIZE,
-                    pixelY: (part.y + 0.5) * CELL_SIZE
-                };
-                drawTrainPart(this.ctx, partWithPixels);
-            });
-        });
+  }
+
+  // Импорт уровня формата v2 из текстового поля: JSON.parse вместо eval (§2.4)
+  importConfig(): void {
+    try {
+      this.state = fromV2(JSON.parse(this.configTextarea.value));
+      this.changed();
+    } catch (error) {
+      alert('Error importing configuration: ' + (error instanceof Error ? error.message : String(error)));
     }
-    
-    updateConfig() {
-        const config: EditorConfig = {
-            grid: [...this.grid], // Deep copy
-            semaphores: [...this.semaphores],
-            trains: [...this.trains],
-            targetPoint: this.targetPoint
-        };
-        
-        // Format as JavaScript object with special grid formatting
-        const configStr = this.formatConfig(config);
-        
-        this.configTextarea.value = configStr;
+  }
+
+  async copyConfig(): Promise<void> {
+    const text = formatLevelJson(toV2(this.state));
+    this.configTextarea.value = text;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showMessage('Level JSON copied to clipboard — save it as levels/NN.json');
+    } catch {
+      this.configTextarea.select();
+      this.showMessage('Clipboard is not available: the JSON is selected, copy it manually');
     }
-    
-    formatConfig(config: EditorConfig): string {
-        // Format grid with each row on a single line
-        const gridLines = config.grid.map(row => 
-            '      [' + row.map(cell => '"' + cell + '"').join(', ') + ']'
-        );
-        const gridStr = '    grid: [\n' + gridLines.join(',\n') + '\n    ]';
-        
-        // Format other properties normally
-        const otherProps = (Object.keys(config) as (keyof EditorConfig)[]).filter(key => key !== 'grid');
-        const otherPropsStr = otherProps.map(key => {
-            const value = JSON.stringify(config[key], null, 4);
-            return `    ${key}: ${value}`;
-        }).join(',\n');
-        
-        return `{\n${gridStr}${otherPropsStr ? ',\n' + otherPropsStr : ''}\n}`;
-    }
-    
-    clearGrid() {
-        if (confirm('Are you sure you want to clear the entire grid?')) {
-            this.initializeGrid();
-            this.render();
-            this.updateConfig();
-        }
-    }
-    
-    loadLevel() {
-        // Load from existing levels for demonstration
-        const levelIndex = prompt('Enter level index (0, 1, 2):');
-        const index = parseInt(levelIndex ?? '');
-        
-        if (index >= 0 && index < levels.length) {
-            const level = levels[index];
-            this.grid = level.grid.map(row => [...row]); // Deep copy
-            this.semaphores = level.semaphores ? [...level.semaphores] : [];
-            this.trains = level.trains ? [...level.trains] : [];
-            this.targetPoint = level.targetPoint ? {...level.targetPoint} : null;
-            
-            this.render();
-            this.updateConfig();
-        } else {
-            alert('Invalid level index');
-        }
-    }
-    
-    saveLevel() {
-        // Copy config to clipboard
-        this.configTextarea.select();
-        document.execCommand('copy');
-        alert('Level configuration copied to clipboard!');
-    }
-    
-    importConfig() {
-        try {
-            const configText = this.configTextarea.value;
-            const config = eval('(' + configText + ')') as Partial<EditorConfig>; // Use eval for parsing object literal
-            
-            if (config.grid) {
-                this.grid = config.grid.map(row => [...row]);
-            }
-            if (config.semaphores) {
-                this.semaphores = [...config.semaphores];
-            }
-            if (config.trains) {
-                this.trains = [...config.trains];
-            }
-            if (config.targetPoint) {
-                this.targetPoint = {...config.targetPoint};
-            }
-            
-            this.render();
-            alert('Configuration imported successfully!');
-        } catch (e) {
-            alert('Error importing configuration: ' + (e instanceof Error ? e.message : String(e)));
-        }
-    }
-    
-    exportConfig() {
-        this.updateConfig();
-        this.configTextarea.select();
-        document.execCommand('copy');
-        alert('Configuration exported to clipboard!');
-    }
+  }
 }
 
 // Initialize editor when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    (window as unknown as { editor: LevelEditor }).editor = new LevelEditor();
+  (window as unknown as { editor: LevelEditor }).editor = new LevelEditor();
 });

@@ -1,8 +1,8 @@
 // Формат уровня v2 (FIXIN-PLAN.md §4): грид из токенов соединений + объекты с явными координатами.
 // compileLevel проверяет уровень и собирает из него LegacyLevel, на котором пока работает движок.
-import { DIRECTIONS, GRID_HEIGHT, GRID_WIDTH, type CellType } from '../constants';
+import { DIRECTIONS, GRID_HEIGHT, GRID_WIDTH } from '../constants';
 import type { LegacyLevel, TrainPartConfig, WagonType } from '../types';
-import { LEGACY_CELL_CONNECTIONS } from './legacy-import';
+import { legacySymbolForToken } from './legacy-import';
 import {
   classifyCell,
   connectionSides,
@@ -53,13 +53,6 @@ export const HEADING_DIRECTION: Record<Side, number> = {
 };
 
 const WAGON_TYPES: readonly string[] = ['wagon1', 'wagon2'];
-
-const LEGACY_BY_TOKEN = new Map<string, CellType>(
-  (Object.entries(LEGACY_CELL_CONNECTIONS) as [CellType, readonly Connection[]][]).map(([cellType, connections]) => [
-    formatToken(connections),
-    cellType,
-  ])
-);
 
 const isPoint = (value: unknown): value is Point =>
   Array.isArray(value) && value.length === 2 && value.every(n => Number.isInteger(n));
@@ -181,7 +174,9 @@ export function compileLevel(input: unknown): CompiledLevel {
 
   // --- Станция
   let station: Point = [0, 0];
-  if (checkPoint('station', level.station)) {
+  if (level.station === undefined) {
+    error('"station" is required');
+  } else if (checkPoint('station', level.station)) {
     station = level.station as Point;
     if (shapeAt(station[0], station[1]).kind === 'empty') {
       error(`station at (${station[0]},${station[1]}): no track in this cell`, station[0], station[1]);
@@ -271,7 +266,7 @@ export function compileLevel(input: unknown): CompiledLevel {
 
   const legacyGrid = cells.map((row, y) =>
     row.map((cell, x) => {
-      const cellType = LEGACY_BY_TOKEN.get(formatToken(cell.connections));
+      const cellType = legacySymbolForToken(formatToken(cell.connections));
       if (cellType === undefined) {
         // Все допустимые классификатором клетки есть в таблице; сюда попадать не должны
         throw new Error(`cell (${x},${y}) "${formatToken(cell.connections)}" has no legacy equivalent`);
@@ -314,7 +309,7 @@ export function formatLevelJson(level: LevelV2): string {
   if (level.switches) fields.push(`  "switches": ${list(level.switches)}`);
   if (level.semaphores) fields.push(`  "semaphores": ${list(level.semaphores)}`);
   fields.push(`  "trains": ${list(level.trains)}`);
-  fields.push(`  "station": ${JSON.stringify(level.station)}`);
+  if (level.station) fields.push(`  "station": ${JSON.stringify(level.station)}`);
   lines.push(fields.join(',\n'));
   lines.push('}');
   return lines.join('\n') + '\n';
