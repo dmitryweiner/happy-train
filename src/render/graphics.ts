@@ -555,18 +555,20 @@ export function drawSemaphoreCell(ctx: DrawContext, x: number, y: number, cellTy
 
 // Draw function for station cells with house icon underneath
 export function drawStationCell(ctx: DrawContext, x: number, y: number, cellType: string): void {
-  const cellX = x * P.cellSize;
-  const cellY = y * P.cellSize;
-  const centerX = cellX + P.cellSize / 2;
-  const centerY = cellY + P.cellSize / 2;
-  
-  // Draw house icon first (underneath the rails)
+  drawStationIcon(ctx, x, y);
+
+  // Draw the normal cell content on top
+  drawCell(ctx, x, y, cellType);
+}
+
+// Домик станции — подложка клетки; рельсы, стрелка или семафор рисуются поверх
+export function drawStationIcon(ctx: DrawContext, x: number, y: number): void {
+  const centerX = x * P.cellSize + P.cellSize / 2;
+  const centerY = y * P.cellSize + P.cellSize / 2;
+
   ctx.font = `${P.cellSize * 0.8}px Arial`; // Size is about half the cell
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = COLORS.BLACK; // Black color for the house icon
   ctx.fillText("🏠", centerX, centerY);
-  
-  // Draw the normal cell content on top
-  drawCell(ctx, x, y, cellType);
 }

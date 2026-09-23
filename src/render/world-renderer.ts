@@ -1,7 +1,7 @@
 import { GRID_HEIGHT, GRID_WIDTH } from '../constants';
 import { isSwitchCell } from '../core/legacy-import';
 import { getSwitchState, isSemaphoreAt, type World } from '../core/world';
-import { drawCell, drawSemaphoreCell, drawStationCell, drawSwitchCell, drawTrainPart } from './graphics';
+import { drawCell, drawSemaphoreCell, drawStationIcon, drawSwitchCell, drawTrainPart } from './graphics';
 
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
@@ -21,10 +21,11 @@ export function drawWorld(
     for (let x = 0; x < GRID_WIDTH; x++) {
       const cellType = world.grid[y][x];
 
-      // Check if this is the station cell
+      // Станция — подложка: стрелка или семафор на ней рисуются со своим состоянием (§2.3.6)
       if (x === targetPoint.x && y === targetPoint.y) {
-        drawStationCell(ctx, x, y, cellType);
-      } else if (isSwitchCell(cellType)) {
+        drawStationIcon(ctx, x, y);
+      }
+      if (isSwitchCell(cellType)) {
         drawSwitchCell(ctx, x, y, cellType, getSwitchState(world, x, y));
       } else if (isSemaphoreAt(world, x, y)) {
         const semaphoreState = world.semaphoreStates[`${x},${y}`];

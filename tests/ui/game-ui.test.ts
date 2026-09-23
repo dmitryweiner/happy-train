@@ -174,30 +174,40 @@ describe('Game UI', () => {
     expect(game.world.trains[0][0].pixelX).toBe(x);
   });
 
-  // Известные баги UI (FIXIN-PLAN.md §2.3). test.fails: описывает правильное поведение и сейчас падает.
+  // Исправленные баги UI (FIXIN-PLAN.md §2.3)
 
-  test.fails('ручная пауза не снимается при возврате фокуса в окно (§2.3.4)', async () => {
+  test('ручная пауза не снимается при возврате фокуса в окно (§2.3.4)', async () => {
     const game = await startGame();
     document.getElementById('level-display')?.dispatchEvent(new MouseEvent('click'));
+    expect(document.getElementById('level-display')?.textContent).toBe('Level #1 · PAUSED');
+    window.dispatchEvent(new Event('blur'));
     window.dispatchEvent(new Event('focus'));
     const x = game.world.trains[0][0].pixelX;
     frame(30);
     expect(game.world.trains[0][0].pixelX).toBe(x);
+    // Снять паузу можно только тем же кликом
+    document.getElementById('level-display')?.dispatchEvent(new MouseEvent('click'));
+    frame(30);
+    expect(game.world.trains[0][0].pixelX).toBeGreaterThan(x);
   });
 
-  test.fails('прогресс сохраняется сразу при прохождении уровня (§2.3.5)', async () => {
+  test('потеря фокуса ставит автопаузу, возврат — снимает', async () => {
+    const game = await startGame();
+    frame(5);
+    window.dispatchEvent(new Event('blur'));
+    const x = game.world.trains[0][0].pixelX;
+    frame(30);
+    expect(game.world.trains[0][0].pixelX).toBe(x);
+    window.dispatchEvent(new Event('focus'));
+    frame(30);
+    expect(game.world.trains[0][0].pixelX).toBeGreaterThan(x);
+    expect(document.getElementById('level-display')?.textContent).toBe('Level #1');
+  });
+
+  test('прогресс сохраняется сразу при прохождении уровня (§2.3.5)', async () => {
     await startGame([nearWinLevel(), levels[1]]);
     runUntil(() => isShown('levelComplete'));
     expect(isShown('levelComplete')).toBe(true);
     expect(localStorage.getItem(STORAGE_KEYS.CURRENT_LEVEL)).toBe('1');
-  });
-
-  test.fails('семафор на клетке со стрелкой можно переключить (§2.3.6)', async () => {
-    const level = structuredClone(levels[0]);
-    // Семафор на стрелке (5,3)
-    level.semaphores.push({ x: 5, y: 3, isOpen: true });
-    const game = await startGame([level]);
-    clickCell(game, 5, 3);
-    expect(game.world.semaphoreStates['5,3'].isOpen).toBe(false);
   });
 });

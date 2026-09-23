@@ -167,6 +167,9 @@ export function compileLevel(input: unknown): CompiledLevel {
     const [x, y] = semaphore.at;
     if (shapeAt(x, y).kind === 'empty') {
       error(`${what} at (${x},${y}): no track in this cell`, x, y);
+    } else if (shapeAt(x, y).kind === 'switch') {
+      // Клик по такой клетке переключает стрелку, семафор было бы не переключить (§2.3.6)
+      error(`${what} at (${x},${y}): a semaphore cannot stand on a switch`, x, y);
     } else if (semaphore.initial !== 'open' && semaphore.initial !== 'closed') {
       error(`${what} at (${x},${y}): "initial" must be "open" or "closed"`, x, y);
     } else if (semaphores.some(s => s.x === x && s.y === y)) {

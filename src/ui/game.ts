@@ -26,6 +26,8 @@ import {
   zoomFromWheelDelta,
 } from './viewport';
 
+type PauseReason = 'manual' | 'window' | 'hidden';
+
 const TICK_SECONDS = 1 / TICK_RATE;
 const MAX_TICKS_PER_FRAME = 5;
 
@@ -55,7 +57,7 @@ export class Game {
   currentLevelIndex: number;
   lastTime: number;
   timeAccumulator = 0;
-  isPaused: boolean;
+  pauseReasons = new Set<PauseReason>();
   viewZoom: number;
   viewPanX: number;
   viewPanY: number;
@@ -97,7 +99,6 @@ export class Game {
 
     this.currentLevelIndex = this.loadCurrentLevel(); // Load saved level or start from 0
     this.lastTime = performance.now();
-    this.isPaused = false; // Add pause state
     this.setupCanvas();
     this.viewZoom = 1;
     this.viewPanX = 0;
@@ -173,7 +174,23 @@ export class Game {
   }
 
   updateLevelDisplay() {
-    this.levelDisplay.textContent = `Level #${this.currentLevelIndex + 1}`;
+    const paused = this.pauseReasons.has('manual') ? ' · PAUSED' : '';
+    this.levelDisplay.textContent = `Level #${this.currentLevelIndex + 1}${paused}`;
+  }
+
+  get isPaused(): boolean {
+    return this.pauseReasons.size > 0;
+  }
+
+  setPause(reason: PauseReason, paused: boolean): void {
+    const wasPaused = this.isPaused;
+    if (paused) this.pauseReasons.add(reason);
+    else this.pauseReasons.delete(reason);
+    if (wasPaused && !this.isPaused) {
+      // Время паузы не должно попасть в deltaTime следующего кадра
+      this.lastTime = performance.now();
+    }
+    this.updateLevelDisplay();
   }
 
   initGame(resetToFirstLevel = false): void {
@@ -222,13 +239,9 @@ export class Game {
       this.initGame();
     });
     
+    // Ручная пауза — по клику на номер уровня. Она не снимается сама при возврате в окно (§2.3.4)
     this.levelDisplay.addEventListener("click", () => {
-      if (this.isPaused) {
-        this.isPaused = false;
-        this.lastTime = performance.now();
-      } else {
-        this.isPaused = true;
-      }
+      this.setPause('manual', !this.pauseReasons.has('manual'));
     });
 
     this.playAgainWinButton.addEventListener("click", () => {
@@ -239,27 +252,10 @@ export class Game {
       this.initGame();
     });
     
-    // Add focus/blur event listeners for pause functionality
-    window.addEventListener("blur", () => {
-      this.isPaused = true;
-    });
-    
-    window.addEventListener("focus", () => {
-      this.isPaused = false;
-      // Reset lastTime to prevent large deltaTime when resuming
-      this.lastTime = performance.now();
-    });
-    
-    // Handle visibility change (for mobile browsers)
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        this.isPaused = true;
-      } else {
-        this.isPaused = false;
-        // Reset lastTime to prevent large deltaTime when resuming
-        this.lastTime = performance.now();
-      }
-    });
+    // Автопауза, пока окно не в фокусе или вкладка скрыта (для мобильных браузеров)
+    window.addEventListener("blur", () => this.setPause('window', true));
+    window.addEventListener("focus", () => this.setPause('window', false));
+    document.addEventListener("visibilitychange", () => this.setPause('hidden', document.hidden));
     
     // Handle both clicks and taps for switch toggling
     const handleSwitchInteraction = (e: MouseEvent | TouchEvent) => {
@@ -483,7 +479,8 @@ export class Game {
       this.gameOverScreen.style.display = "block";
     } else if (this.world.status === 'won') {
       if (this.currentLevelIndex < this.levels.length - 1) {
-        // More levels available
+        // More levels available. Прогресс сохраняем сразу: перезагрузка страницы не отнимет пройденный уровень (§2.3.5)
+        Storage.set(STORAGE_KEYS.CURRENT_LEVEL, this.currentLevelIndex + 1);
         this.levelCompleteScreen.style.display = "block";
       } else {
         // All levels completed

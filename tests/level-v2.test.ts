@@ -106,6 +106,11 @@ describe('compileLevel: ошибки', () => {
     expect(issues).toContain('error: switches[0] at (1,0): cell "EW" is not a switch');
   });
 
+  test('семафор на стрелке запрещён (§2.3.6)', () => {
+    const issues = issuesOf(modified(1, l => { l.semaphores = [{ at: [5, 3], initial: 'open' }]; }));
+    expect(issues).toContain('error: semaphores[0] at (5,3): a semaphore cannot stand on a switch');
+  });
+
   test('все ошибки сообщаются сразу', () => {
     const issues = issuesOf(modified(1, l => { l.station = [1, 1]; l.trains[0].heading = 'N'; }));
     expect(issues.filter(issue => issue.startsWith('error'))).toHaveLength(2);
