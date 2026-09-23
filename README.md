@@ -116,7 +116,7 @@ happy-train/
 │   ├── render/         # Canvas rendering
 │   ├── ui/             # Game controller: DOM, input, zoom/pan, screens, storage
 │   └── editor/         # Level editor
-├── levels/            # Levels in format v2 (JSON) + level.schema.json
+├── levels/            # Levels in format v2 (JSON) + level.schema.json + examples/
 ├── tools/level.ts     # Level CLI: validate / render / migrate
 ├── styles.css         # Game styling
 ├── editor.css         # Editor styling
@@ -135,6 +135,10 @@ happy-train/
 │   └── ui/            # UI integration tests (jsdom)
 └── visual-tests/      # Visual regression tests
 ```
+
+## 🧩 Level Format
+
+Levels are JSON files in `levels/` (format v2): the grid lists which sides of each cell are connected (`"EW"`, `"SW"`, `"EW+SW"` for a switch...), trains are given by the locomotive cell, heading and wagon list. See [LEVEL_FORMAT.md](LEVEL_FORMAT.md) for the full description, common validator errors and a prompt template for generating levels with an LLM (`yarn level validate / render / solve`).
 
 ## 🎨 Level Editor
 

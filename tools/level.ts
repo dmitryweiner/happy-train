@@ -9,7 +9,7 @@ import path from 'node:path';
 import { compileLevel, formatLevelJson, LevelError } from '../src/core/level-v2';
 import { renderLevelAscii } from '../src/core/level-ascii';
 import { legacyLevelToV2 } from '../src/core/legacy-import';
-import { solveLevel } from '../src/core/solver';
+import { idleOutcome, solveLevel } from '../src/core/solver';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -49,7 +49,15 @@ function solve(files: string[]): void {
   let failed = false;
   for (const file of files) {
     const started = Date.now();
-    const result = solveLevel(compileLevel(readJson(file)).legacy);
+    const { legacy } = compileLevel(readJson(file));
+    const idle = idleOutcome(legacy);
+    console.log(`${file}: without clicks — ${idle.status} at tick ${idle.tick}`);
+    if (idle.status === 'won') {
+      failed = true;
+      console.log(`  error: the level is won without any clicks`);
+      continue;
+    }
+    const result = solveLevel(legacy);
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
     if (result.actions) {
       const clicks = result.actions.map(a => `(${a.x},${a.y})@${a.tick}`).join(' ') || 'no clicks needed';

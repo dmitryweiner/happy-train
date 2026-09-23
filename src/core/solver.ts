@@ -114,3 +114,10 @@ export function solveLevel(level: LegacyLevel, { maxTicks = 90 * TICK_RATE, maxN
   }
   return { actions: null, expanded };
 }
+
+// Что будет, если игрок ничего не делает: уровень не должен выигрываться сам
+export function idleOutcome(level: LegacyLevel, maxTicks = 90 * TICK_RATE): { status: World['status'] | 'timeout'; tick: number } {
+  const world = createWorld(level);
+  while (world.status === 'running' && world.tick < maxTicks) stepWorld(world);
+  return { status: world.status === 'running' ? 'timeout' : world.status, tick: world.tick };
+}
