@@ -61,6 +61,8 @@ export interface World {
   // Части поездов (локомотив, вагоны) с координатами — пересчитываются после каждого тика
   trains: TrainPart[][];
   tick: number;
+  // Растёт при каждом переключении стрелки или семафора: отрисовка по нему понимает, что неподвижный слой устарел
+  controlsVersion: number;
   status: WorldStatus;
   crash: { trainIndex: number; reason: CrashReason } | null;
 }
@@ -191,6 +193,7 @@ export function createWorld(level: LegacyLevel): World {
     trainStates: [],
     trains: [],
     tick: 0,
+    controlsVersion: 0,
     status: 'running',
     crash: null,
   };
@@ -231,6 +234,7 @@ export function toggleSwitch(world: World, x: number, y: number): void {
   if (state) {
     if (isTrainOnCell(world, x, y)) return;
     state.isStraight = !state.isStraight;
+    world.controlsVersion++;
   }
 }
 
@@ -239,6 +243,7 @@ export function toggleSemaphore(world: World, x: number, y: number): void {
   const state = world.semaphoreStates[cellKey(x, y)];
   if (state) {
     state.isOpen = !state.isOpen;
+    world.controlsVersion++;
   }
 }
 
