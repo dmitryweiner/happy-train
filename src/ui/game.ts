@@ -11,7 +11,7 @@ import {
 } from '../constants';
 import { clickCell, createWorld, stepWorld, TICK_RATE, type World } from '../core/world';
 import { generateBackground } from '../render/graphics';
-import { drawWorld } from '../render/world-renderer';
+import { WorldRenderer } from '../render/world-renderer';
 import { levels } from '../levels';
 import type { LegacyLevel } from '../types';
 import { Storage } from './storage';
@@ -57,6 +57,9 @@ export class Game {
   currentLevelIndex: number;
   lastTime: number;
   timeAccumulator = 0;
+  renderer = new WorldRenderer();
+  private frameRequested = false;
+  private looping = false;
   pauseReasons = new Set<PauseReason>();
   viewZoom: number;
   viewPanX: number;
@@ -111,9 +114,8 @@ export class Game {
     this._panPointerDown = false;
     this._panDragCommitted = false;
     this._suppressNextClick = false;
-    this.initGame();
+    this.initGame(); // запускает цикл кадров
     this.setupEventListeners();
-    this.gameLoop(performance.now());
   }
 
   loadCurrentLevel(): number {
@@ -193,8 +195,7 @@ export class Game {
     if (paused) this.pauseReasons.add(reason);
     else this.pauseReasons.delete(reason);
     if (wasPaused && !this.isPaused) {
-      // Время паузы не должно попасть в deltaTime следующего кадра
-      this.lastTime = performance.now();
+      this.requestFrame();
     }
     this.updateLevelDisplay();
   }
@@ -212,6 +213,7 @@ export class Game {
     this.world = createWorld(currentLevel);
     this.timeAccumulator = 0;
     this.setupCanvas(this.world.track.width, this.world.track.height);
+    this.requestFrame();
     
     // Создаем фон
     this.backgroundCanvas = generateBackground(this.canvas, this.world.grid);
@@ -290,6 +292,8 @@ export class Game {
 
       if (x >= 0 && x < this.world.track.width && y >= 0 && y < this.world.track.height) {
         clickCell(this.world, x, y);
+        // На паузе цикл стоит: перерисуем кадр, чтобы было видно новое положение стрелки/семафора
+        this.requestFrame();
       }
     };
 
@@ -456,7 +460,10 @@ export class Game {
     });
   }
 
+  // Цикл кадров крутится, только пока игра идёт: на паузе и на экранах итога кадры не запрашиваются.
+  // Перезапускают его снятие паузы, новый уровень и клик по полю (requestFrame).
   gameLoop(currentTime: number): void {
+    this.frameRequested = false;
     const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
     this.lastTime = currentTime;
 
@@ -464,8 +471,21 @@ export class Game {
     if (!this.isPaused) {
       this.update(deltaTime);
     }
-    
+
     this.draw();
+    this.looping = !this.isPaused && this.world.status === 'running';
+    if (this.looping) {
+      this.requestFrame();
+    }
+  }
+
+  requestFrame(): void {
+    if (this.frameRequested) return;
+    if (!this.looping) {
+      // Цикл стоял: время простоя не должно попасть в deltaTime следующего кадра
+      this.lastTime = performance.now();
+    }
+    this.frameRequested = true;
     requestAnimationFrame((time) => this.gameLoop(time));
   }
 
@@ -497,6 +517,6 @@ export class Game {
   }
 
   draw(): void {
-    drawWorld(this.ctx, this.world, this.backgroundCanvas);
+    this.renderer.draw(this.ctx, this.world, this.backgroundCanvas);
   }
 }

@@ -229,4 +229,82 @@ describe('Game UI', () => {
     expect(isShown('levelComplete')).toBe(true);
     expect(localStorage.getItem(STORAGE_KEYS.CURRENT_LEVEL)).toBe('1');
   });
+
+  // Цикл отрисовки не крутится вхолостую: на паузе и на экранах итога кадры не запрашиваются
+  describe('цикл кадров', () => {
+    const framesRequested = () => rafQueue.length;
+    const pause = () => document.getElementById('level-display')?.dispatchEvent(new MouseEvent('click'));
+
+    test('ручная пауза останавливает цикл, снятие паузы запускает', async () => {
+      const game = await startGame();
+      frame(5);
+      pause();
+      frame(); // кадр, в котором игра узнаёт о паузе
+      expect(framesRequested()).toBe(0);
+      const x = game.world.trains[0][0].pixelX;
+      pause();
+      expect(framesRequested()).toBe(1);
+      frame(30);
+      expect(game.world.trains[0][0].pixelX).toBeGreaterThan(x);
+    });
+
+    test('автопауза (окно без фокуса) останавливает цикл', async () => {
+      await startGame();
+      frame(5);
+      window.dispatchEvent(new Event('blur'));
+      frame();
+      expect(framesRequested()).toBe(0);
+      window.dispatchEvent(new Event('focus'));
+      expect(framesRequested()).toBe(1);
+    });
+
+    test('клик по стрелке на паузе перерисовывает кадр один раз', async () => {
+      const game = await startGame();
+      pause();
+      frame();
+      expect(framesRequested()).toBe(0);
+      const drawSpy = vi.spyOn(game, 'draw');
+      clickCell(game, 5, 3);
+      expect(framesRequested()).toBe(1);
+      frame();
+      expect(drawSpy).toHaveBeenCalledTimes(1);
+      expect(framesRequested()).toBe(0);
+    });
+
+    test('после крушения цикл останавливается, «Play Again» запускает', async () => {
+      const level = nearWinLevel();
+      level.targetPoint = { x: 14, y: 9 };
+      level.grid[1][8] = ' ';
+      const game = await startGame([level]);
+      runUntil(() => isShown('gameOver'));
+      frame();
+      expect(framesRequested()).toBe(0);
+      document.getElementById('playAgain')?.dispatchEvent(new MouseEvent('click'));
+      expect(framesRequested()).toBe(1);
+      frame(30);
+      expect(game.world.trains[0][0].speed).toBeGreaterThan(0);
+    });
+
+    test('после победы цикл останавливается, «Next Level» запускает', async () => {
+      const game = await startGame([nearWinLevel(), levels[1]]);
+      runUntil(() => isShown('levelComplete'));
+      frame();
+      expect(framesRequested()).toBe(0);
+      document.getElementById('nextLevel')?.dispatchEvent(new MouseEvent('click'));
+      expect(framesRequested()).toBe(1);
+      frame(10);
+      expect(game.world.trains[0][0].speed).toBeGreaterThan(0);
+    });
+
+    test('повторные запуски не плодят параллельные циклы', async () => {
+      await startGame();
+      pause();
+      pause();
+      pause();
+      pause();
+      expect(framesRequested()).toBeLessThanOrEqual(1);
+      frame(3);
+      expect(framesRequested()).toBe(1);
+    });
+  });
 });
