@@ -32,8 +32,9 @@ function modified(n: number, change: (level: LevelV2) => void): LevelV2 {
 }
 
 describe('миграция уровней на v2', () => {
-  test('в levels/ ровно столько уровней, сколько было', () => {
-    expect(levelFiles).toHaveLength(legacyLevels.length);
+  test('первые уровни в levels/ — перенесённые legacy-уровни, дальше новые', () => {
+    expect(levelFiles.length).toBeGreaterThanOrEqual(legacyLevels.length);
+    expect(levelFiles.slice(0, legacyLevels.length)).toEqual(legacyLevels.map((_, i) => `../levels/${String(i + 1).padStart(2, '0')}.json`));
   });
 
   legacyLevels.forEach((legacy, index) => {

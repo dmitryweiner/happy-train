@@ -143,7 +143,9 @@ describe(`golden: levels (${ENGINE} engine)`, () => {
     const levels = JSON.parse(JSON.stringify(ENGINE === 'legacy' ? new LegacySim(0).ctx.levels : srcLevels)) as unknown[];
     if (ENGINE === 'current') {
       // Эталон заморожен: уровни из levels/*.json только сравниваются с ним и никогда его не перезаписывают
-      expect(levels).toEqual(JSON.parse(fs.readFileSync(path.join(GOLDEN_DIR, 'legacy-levels.json'), 'utf8')));
+      // Уровни после legacy-набора (08 и дальше) — новые, в эталоне их нет
+      const legacy = JSON.parse(fs.readFileSync(path.join(GOLDEN_DIR, 'legacy-levels.json'), 'utf8')) as unknown[];
+      expect(levels.slice(0, legacy.length)).toEqual(legacy);
       return;
     }
     const text = '[\n' + levels.map(level => '  ' + JSON.stringify(level)).join(',\n') + '\n]\n';
