@@ -1,79 +1,214 @@
-// Состояние игрового мира и один шаг симуляции. Без DOM: используется игрой, тестами и солвером.
+// Состояние игрового мира и шаг симуляции (FIXIN-PLAN.md §3.1). Без DOM: используется игрой, тестами и солвером.
+//
+// Модель: поезд — след из пройденных сегментов (клетка + сторона въезда + сторона выезда). Голова стоит на
+// целочисленном смещении внутри последнего сегмента, вагон k — ровно на k·WAGON_SPACING позади по следу.
+// Всё состояние — целые числа, шаг фиксированный (1 тик = 1/TICK_RATE с), поэтому результат не зависит
+// от частоты кадров и браузера. Пиксели и углы вычисляются из следа только для отрисовки и столкновений.
 import {
   CELL_SIZE,
-  CELL_TYPES,
-  GRID_HEIGHT,
-  GRID_WIDTH,
   LOCOMOTIVE_STATES,
   TRAIN_ACCELERATION,
   TRAIN_DECELERATION,
   TRAIN_MAX_SPEED,
   type CellType,
+  type LocomotiveState,
 } from '../constants';
-import type { LegacyLevel, TrainPart } from '../types';
-import { calculateNextPosition, isSwitchCell } from './movement';
+import type { LegacyLevel, TrainPart, WagonType } from '../types';
+import { segmentPose, type Segment } from './geometry';
+import { isSwitchCell, legacyGridToTrackMap } from './legacy-import';
+import {
+  classifyCell,
+  connectionSides,
+  isStraightConnection,
+  OPPOSITE,
+  SIDE_OFFSET,
+  type Connection,
+  type Side,
+  type TrackMap,
+} from './track';
+
+export const TICK_RATE = 60;
+// Единицы пути: прямая клетка = CELL_LENGTH, дуга поворота = четверть окружности радиусом в полклетки.
+// Масштаб выбран так, чтобы скорость, ускорение и торможение из constants.ts были целыми в единицах за тик.
+export const CELL_LENGTH = 360_000;
+export const ARC_LENGTH = Math.round((CELL_LENGTH * Math.PI) / 4);
+export const MAX_SPEED = (TRAIN_MAX_SPEED * CELL_LENGTH) / TICK_RATE; // единиц за тик
+export const ACCELERATION = (TRAIN_ACCELERATION * CELL_LENGTH) / TICK_RATE / TICK_RATE; // прирост скорости за тик
+export const DECELERATION = (TRAIN_DECELERATION * CELL_LENGTH) / TICK_RATE / TICK_RATE;
+export const WAGON_SPACING = CELL_LENGTH;
 
 export type WorldStatus = 'running' | 'won' | 'crashed';
 export type CrashReason = 'derail' | 'collision';
 
+export interface Train {
+  // Пройденный путь от хвоста к голове; последний сегмент — клетка локомотива
+  segments: Segment[];
+  // Смещение головы внутри последнего сегмента, [0, length)
+  headOffset: number;
+  speed: number; // единиц пути за тик
+  state: LocomotiveState;
+  wagonTypes: WagonType[];
+}
+
 export interface World {
   readonly level: LegacyLevel;
+  readonly track: TrackMap;
+  // Для отрисовки: символы старого формата
   grid: CellType[][];
   switchStates: Record<string, { isStraight: boolean }>;
   semaphoreStates: Record<string, { isOpen: boolean }>;
+  trainStates: Train[];
+  // Части поездов (локомотив, вагоны) с координатами — пересчитываются после каждого тика
   trains: TrainPart[][];
+  tick: number;
   status: WorldStatus;
   crash: { trainIndex: number; reason: CrashReason } | null;
 }
 
 const cellKey = (x: number, y: number): string => `${x},${y}`;
 
-export function createWorld(level: LegacyLevel): World {
-  // Initialize game grid from level data
-  const grid = level.grid.map(row => [...row]); // Deep copy the grid
+const segmentLength = (from: Side, to: Side): number =>
+  isStraightConnection(`${from}${to}` as Connection) || isStraightConnection(`${to}${from}` as Connection)
+    ? CELL_LENGTH
+    : ARC_LENGTH;
 
-  // Scan grid for switches and set default states
-  const switchStates: World['switchStates'] = {};
-  for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
-      if (isSwitchCell(grid[y][x])) {
-        switchStates[cellKey(x, y)] = { isStraight: true }; // Default state
-      }
+function sideFromDirection(direction: number): Side {
+  const quarter = ((Math.round(direction / (Math.PI / 2)) % 4) + 4) % 4;
+  return (['E', 'S', 'W', 'N'] as const)[quarter];
+}
+
+// Путь через клетку, если въехать с side. null — с этой стороны въехать нельзя (сход с рельс).
+function routeThrough(world: World, x: number, y: number, entry: Side): Segment | null {
+  if (x < 0 || y < 0 || x >= world.track.width || y >= world.track.height) return null;
+  const connections = world.track.cells[y][x].connections;
+  const options = connections.filter(c => connectionSides(c).includes(entry));
+  if (options.length === 0) return null;
+  let through = options[0];
+  if (options.length > 1) {
+    // Въезд в корень стрелки: ветка по её положению
+    const shape = classifyCell(connections);
+    if (shape.kind !== 'switch') throw new Error(`ambiguous track at (${x},${y})`);
+    through = world.switchStates[cellKey(x, y)]?.isStraight === false ? shape.diverging : shape.straight;
+  }
+  const exit = connectionSides(through).find(side => side !== entry) as Side;
+  return { x, y, from: entry, to: exit, length: segmentLength(entry, exit) };
+}
+
+// Сегмент для части поезда из конфига уровня: клетка и направление движения (сторона выезда)
+function initialSegment(world: World, x: number, y: number, direction: number): Segment {
+  const exit = sideFromDirection(direction);
+  const connections = world.track.cells[y]?.[x]?.connections ?? [];
+  const options = connections.filter(c => connectionSides(c).includes(exit));
+  if (options.length === 0) {
+    throw new Error(`train part at (${x},${y}) heading ${exit}: no track leaving ${exit}`);
+  }
+  let through = options[0];
+  if (options.length > 1) {
+    const shape = classifyCell(connections);
+    if (shape.kind === 'switch') {
+      through = world.switchStates[cellKey(x, y)]?.isStraight === false ? shape.diverging : shape.straight;
     }
   }
+  const entry = connectionSides(through).find(side => side !== exit) as Side;
+  return { x, y, from: entry, to: exit, length: segmentLength(entry, exit) };
+}
+
+// Где на следе стоит точка в distance единицах позади головы
+function locate(train: Train, distance: number): { segment: Segment; offset: number } {
+  let index = train.segments.length - 1;
+  let offset = train.headOffset - distance;
+  while (offset < 0 && index > 0) {
+    index--;
+    offset += train.segments[index].length;
+  }
+  return { segment: train.segments[index], offset: Math.max(0, offset) };
+}
+
+function trainParts(train: Train, previous: TrainPart[] | undefined): TrainPart[] {
+  const types: (WagonType | null)[] = [null, ...train.wagonTypes];
+  return types.map((wagonType, index) => {
+    const { segment, offset } = locate(train, index * WAGON_SPACING);
+    const pose = segmentPose(segment, offset);
+    const part: TrainPart = {
+      type: index === 0 ? 'locomotive' : 'wagon',
+      x: segment.x,
+      y: segment.y,
+      direction: pose.direction,
+      speed: (train.speed * TICK_RATE) / CELL_LENGTH, // клеток в секунду, как в конфиге
+      pixelX: pose.pixelX,
+      pixelY: pose.pixelY,
+    };
+    if (index === 0) part.state = train.state;
+    else part.wagonType = wagonType ?? undefined;
+    // Сохраняем идентичность объектов между тиками: удобно отрисовке и тестам
+    return previous?.[index] ? Object.assign(previous[index], part) : part;
+  });
+}
+
+function refreshParts(world: World): void {
+  world.trains = world.trainStates.map((train, index) => trainParts(train, world.trains[index]));
+}
+
+// Хвост следа, который уже позади последнего вагона, больше не нужен
+function trimTrail(train: Train): void {
+  const behind = train.wagonTypes.length * WAGON_SPACING;
+  let covered = train.headOffset;
+  let keepFrom = train.segments.length - 1;
+  while (covered < behind && keepFrom > 0) {
+    keepFrom--;
+    covered += train.segments[keepFrom].length;
+  }
+  if (keepFrom > 0) train.segments.splice(0, keepFrom);
+}
+
+export function createWorld(level: LegacyLevel): World {
+  const track = legacyGridToTrackMap(level.grid);
+
+  const switchStates: World['switchStates'] = {};
+  track.cells.forEach((row, y) =>
+    row.forEach((cell, x) => {
+      if (cell.connections.length === 2 && classifyCell(cell.connections).kind === 'switch') {
+        switchStates[cellKey(x, y)] = { isStraight: true }; // Default state
+      }
+    })
+  );
   for (const sw of level.switches ?? []) {
     const state = switchStates[cellKey(sw.x, sw.y)];
     if (state) state.isStraight = sw.isStraight;
   }
 
-  // Initialize semaphores from level data
   const semaphoreStates: World['semaphoreStates'] = {};
   for (const semaphore of level.semaphores ?? []) {
     semaphoreStates[cellKey(semaphore.x, semaphore.y)] = { isOpen: semaphore.isOpen };
   }
 
-  // Create train parts from level data
-  const trains = level.trains.map(train =>
-    train.map(trainData => {
-      const trainPart: TrainPart = {
-        type: trainData.type,
-        x: trainData.x,
-        y: trainData.y,
-        direction: trainData.direction,
-        speed: 0,
-        pixelX: (trainData.x + 0.5) * CELL_SIZE,
-        pixelY: (trainData.y + 0.5) * CELL_SIZE,
-      };
-      if (trainData.type === 'locomotive') {
-        trainPart.state = LOCOMOTIVE_STATES.ACCELERATING;
-      } else {
-        trainPart.wagonType = trainData.wagonType;
-      }
-      return trainPart;
-    })
-  );
+  const world: World = {
+    level,
+    track,
+    grid: level.grid.map(row => [...row]),
+    switchStates,
+    semaphoreStates,
+    trainStates: [],
+    trains: [],
+    tick: 0,
+    status: 'running',
+    crash: null,
+  };
 
-  return { level, grid, switchStates, semaphoreStates, trains, status: 'running', crash: null };
+  world.trainStates = level.trains.map(config => {
+    // Части в конфиге идут от локомотива к хвосту; след хранится от хвоста к голове
+    const segments = config.map(part => initialSegment(world, part.x, part.y, part.direction)).reverse();
+    const head = segments[segments.length - 1];
+    return {
+      segments,
+      headOffset: head.length / 2, // локомотив — в середине своей клетки
+      speed: 0,
+      state: LOCOMOTIVE_STATES.ACCELERATING,
+      wagonTypes: config.slice(1).map(part => (part.type === 'wagon' ? part.wagonType : 'wagon1')),
+    };
+  });
+  refreshParts(world);
+  return world;
 }
 
 // Check if any train part is on the given cell
@@ -83,8 +218,7 @@ export function isTrainOnCell(world: World, x: number, y: number): boolean {
 
 // Check if there is a semaphore at given coordinates
 export function isSemaphoreAt(world: World, x: number, y: number): boolean {
-  return world.level.semaphores &&
-         world.level.semaphores.some(semaphore => semaphore.x === x && semaphore.y === y);
+  return world.semaphoreStates[cellKey(x, y)] !== undefined;
 }
 
 export function getSwitchState(world: World, x: number, y: number): boolean | undefined {
@@ -117,163 +251,100 @@ export function clickCell(world: World, x: number, y: number): void {
   }
 }
 
-function isValidMove(world: World, x: number, y: number): boolean {
-  // Check if position is within grid
-  if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
-    return false;
-  }
-
-  // Check if there are rails at the position
-  const cellType = world.grid[y][x];
-  return cellType !== CELL_TYPES.EMPTY;
-}
-
 export function checkCollisions(world: World): boolean {
   const collisionDistance = CELL_SIZE / 2;
-
-  const trainParts = world.trains.flat();
-
-  // Check all pairs of train parts
-  for (let i = 0; i < trainParts.length; i++) {
-    for (let j = i + 1; j < trainParts.length; j++) {
-      const part1 = trainParts[i];
-      const part2 = trainParts[j];
-
-      // Calculate distance between the two train parts
-      const dx = part1.pixelX - part2.pixelX;
-      const dy = part1.pixelY - part2.pixelY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Check if parts are too close (collision)
-      if (distance < collisionDistance) {
+  const parts = world.trains.flat();
+  for (let i = 0; i < parts.length; i++) {
+    for (let j = i + 1; j < parts.length; j++) {
+      const dx = parts[i].pixelX - parts[j].pixelX;
+      const dy = parts[i].pixelY - parts[j].pixelY;
+      if (Math.sqrt(dx * dx + dy * dy) < collisionDistance) {
         return true;
       }
     }
   }
-
   return false;
 }
 
-function crashTrain(world: World, trainIndex: number, reason: CrashReason): void {
-  world.trains[trainIndex][0].state = LOCOMOTIVE_STATES.CRASHED;
+function crash(world: World, trainIndex: number, reason: CrashReason): void {
   world.status = 'crashed';
   world.crash = { trainIndex, reason };
 }
 
-// Один шаг симуляции на deltaTime секунд. Физика — как в legacy-движке (FIXIN-PLAN.md §2.2).
-export function stepWorld(world: World, deltaTime: number): void {
-  // Победа тоже помечает локомотив как CRASHED (§2.3.2), поэтому это условие останавливает мир в обоих случаях
-  if (world.trains.some(train => train[0].state === LOCOMOTIVE_STATES.CRASHED)) {
-    return;
+function updateSpeed(world: World, train: Train): void {
+  const [head] = train.segments.slice(-1);
+  const semaphore = world.semaphoreStates[cellKey(head.x, head.y)];
+  if (semaphore) {
+    if (!semaphore.isOpen) {
+      train.state = train.speed > 0 ? LOCOMOTIVE_STATES.DECELERATING : LOCOMOTIVE_STATES.STOPPED;
+    } else {
+      train.state = LOCOMOTIVE_STATES.ACCELERATING;
+    }
   }
+  switch (train.state) {
+    case LOCOMOTIVE_STATES.ACCELERATING:
+      train.speed = Math.min(MAX_SPEED, train.speed + ACCELERATION);
+      break;
+    case LOCOMOTIVE_STATES.DECELERATING:
+      train.speed = Math.max(0, train.speed - DECELERATION);
+      break;
+    case LOCOMOTIVE_STATES.STOPPED:
+      train.speed = 0;
+      break;
+    default:
+      break;
+  }
+}
 
-  for (let trainIndex = 0; trainIndex < world.trains.length; trainIndex++) {
-    const locomotive = world.trains[trainIndex][0];
-
-    // Check if locomotive is on a semaphore
-    if (isSemaphoreAt(world, locomotive.x, locomotive.y)) {
-      const semaphoreState = world.semaphoreStates[cellKey(locomotive.x, locomotive.y)];
-
-      if (semaphoreState) {
-        if (!semaphoreState.isOpen) {
-          if (locomotive.speed > 0) {
-            locomotive.state = LOCOMOTIVE_STATES.DECELERATING;
-          } else {
-            locomotive.state = LOCOMOTIVE_STATES.STOPPED;
-          }
-        } else {
-          locomotive.state = LOCOMOTIVE_STATES.ACCELERATING;
-        }
-      }
+// Двигает голову поезда. Возвращает событие, если поезд сошёл с рельс или приехал на станцию.
+function advance(world: World, train: Train): 'derail' | 'won' | null {
+  const before = { headOffset: train.headOffset, segmentCount: train.segments.length };
+  train.headOffset += train.speed;
+  let head = train.segments[train.segments.length - 1];
+  while (train.headOffset >= head.length) {
+    const nextX = head.x + SIDE_OFFSET[head.to].dx;
+    const nextY = head.y + SIDE_OFFSET[head.to].dy;
+    const next = routeThrough(world, nextX, nextY, OPPOSITE[head.to]);
+    if (!next) {
+      // Сход с рельс: поезд остаётся там, где был до этого тика (как в legacy-движке)
+      train.headOffset = before.headOffset;
+      train.segments.length = before.segmentCount;
+      return 'derail';
     }
-
-    switch (locomotive.state) {
-      case LOCOMOTIVE_STATES.ACCELERATING:
-        if (locomotive.speed < TRAIN_MAX_SPEED) {
-          locomotive.speed = Math.min(
-            TRAIN_MAX_SPEED,
-            locomotive.speed + TRAIN_ACCELERATION * deltaTime
-          );
-        }
-        break;
-      case LOCOMOTIVE_STATES.DECELERATING:
-        if (locomotive.speed > 0) {
-          locomotive.speed = Math.max(
-            0,
-            locomotive.speed - TRAIN_DECELERATION * deltaTime
-          );
-        }
-        break;
-      case LOCOMOTIVE_STATES.STOPPED:
-        locomotive.speed = 0;
-        break;
-      case LOCOMOTIVE_STATES.IDLE:
-        break;
-      default:
-        break;
+    train.headOffset -= head.length;
+    train.segments.push(next);
+    head = next;
+    const station = world.level.targetPoint;
+    if (next.x === station.x && next.y === station.y) {
+      return 'won';
     }
+  }
+  return null;
+}
 
-    // Process all train parts in a single loop
-    for (let i = 0; i < world.trains[trainIndex].length; i++) {
-      const trainPart = world.trains[trainIndex][i];
+// Один тик симуляции (1/TICK_RATE секунды)
+export function stepWorld(world: World): void {
+  if (world.status !== 'running') return;
+  world.tick++;
 
-      // For wagons, use locomotive's speed
-      if (i > 0) {
-        trainPart.speed = locomotive.speed;
-      }
-
-      // Calculate next position using the shared function
-      const nextPosition = calculateNextPosition(
-        world.grid[trainPart.y][trainPart.x],
-        trainPart.x,
-        trainPart.y,
-        trainPart.pixelX,
-        trainPart.pixelY,
-        trainPart.direction,
-        trainPart.speed,
-        deltaTime,
-        getSwitchState(world, trainPart.x, trainPart.y),
-      );
-
-      const nextPixelX = nextPosition.x;
-      const nextPixelY = nextPosition.y;
-      trainPart.direction = nextPosition.direction;
-
-      // Convert pixel position to grid position (using center points)
-      const nextGridX = Math.floor(nextPixelX / CELL_SIZE);
-      const nextGridY = Math.floor(nextPixelY / CELL_SIZE);
-
-      // Check if train part moved to a new cell
-      if (nextGridX !== trainPart.x || nextGridY !== trainPart.y) {
-        // Check if the new cell is valid
-        if (isValidMove(world, nextGridX, nextGridY)) {
-          // Update grid position first
-          trainPart.x = nextGridX;
-          trainPart.y = nextGridY;
-
-          // Check if locomotive (first train part) reached the target point (station)
-          const targetPoint = world.level.targetPoint;
-          if (i === 0 && trainPart.x === targetPoint.x && trainPart.y === targetPoint.y) {
-            // Level completed!
-            locomotive.state = LOCOMOTIVE_STATES.CRASHED;
-            world.status = 'won';
-            return;
-          }
-        } else {
-          crashTrain(world, trainIndex, 'derail');
-          return;
-        }
-      }
-
-      // Update train part pixel position
-      trainPart.pixelX = nextPixelX;
-      trainPart.pixelY = nextPixelY;
+  for (let trainIndex = 0; trainIndex < world.trainStates.length; trainIndex++) {
+    const train = world.trainStates[trainIndex];
+    updateSpeed(world, train);
+    const event = advance(world, train);
+    trimTrail(train);
+    refreshParts(world);
+    if (event === 'derail') {
+      crash(world, trainIndex, 'derail');
+      return;
     }
-
-    // Check for collisions between train parts
+    if (event === 'won') {
+      world.status = 'won';
+      return;
+    }
     if (checkCollisions(world)) {
-      crashTrain(world, trainIndex, 'collision');
+      crash(world, trainIndex, 'collision');
       return;
     }
   }
 }
+

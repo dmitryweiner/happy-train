@@ -9,7 +9,7 @@ import {
   VIEW_ZOOM_MIN,
   VIEW_ZOOM_WHEEL_SENSITIVITY,
 } from '../constants';
-import { clickCell, createWorld, stepWorld, type World } from '../core/world';
+import { clickCell, createWorld, stepWorld, TICK_RATE, type World } from '../core/world';
 import { generateBackground } from '../render/graphics';
 import { drawWorld } from '../render/world-renderer';
 import { levels } from '../levels';
@@ -25,6 +25,9 @@ import {
   zoomFromPinchRatio,
   zoomFromWheelDelta,
 } from './viewport';
+
+const TICK_SECONDS = 1 / TICK_RATE;
+const MAX_TICKS_PER_FRAME = 5;
 
 function requireElement<T extends HTMLElement = HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -51,6 +54,7 @@ export class Game {
 
   currentLevelIndex: number;
   lastTime: number;
+  timeAccumulator = 0;
   isPaused: boolean;
   viewZoom: number;
   viewPanX: number;
@@ -183,6 +187,7 @@ export class Game {
     const currentLevel = this.levels[this.currentLevelIndex];
     
     this.world = createWorld(currentLevel);
+    this.timeAccumulator = 0;
     
     // Создаем фон
     this.backgroundCanvas = generateBackground(this.canvas, this.world.grid);
@@ -461,9 +466,16 @@ export class Game {
     requestAnimationFrame((time) => this.gameLoop(time));
   }
 
+  // Реальное время копится и расходуется фиксированными тиками симуляции.
+  // Не больше MAX_TICKS_PER_FRAME за кадр: после долгой паузы (вкладка в фоне) игра не «догоняет» рывком.
   update(deltaTime: number): void {
     const previousStatus = this.world.status;
-    stepWorld(this.world, deltaTime);
+    this.timeAccumulator = Math.min(this.timeAccumulator + deltaTime, MAX_TICKS_PER_FRAME * TICK_SECONDS);
+    // Допуск: 1000/60 мс в секундах не всегда точно складывается в 1/60
+    while (this.timeAccumulator >= TICK_SECONDS - 1e-9 && this.world.status === 'running') {
+      stepWorld(this.world);
+      this.timeAccumulator -= TICK_SECONDS;
+    }
     if (this.world.status === previousStatus) {
       return;
     }

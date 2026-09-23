@@ -24,6 +24,11 @@ export const LEGACY_CELL_CONNECTIONS: Record<CellType, readonly Connection[]> = 
   [CELL_TYPES.SWITCH_RIGHT_UP_H]: ['EW', 'NE'],
 };
 
+// Стрелка в старом формате — два символа: "┐|", "-┌" ...
+export function isSwitchCell(cellType: string): boolean {
+  return (LEGACY_CELL_CONNECTIONS[cellType as CellType]?.length ?? 0) === 2 && cellType !== CELL_TYPES.RAIL_H_V;
+}
+
 export function legacyGridToTrackMap(grid: readonly (readonly CellType[])[]): TrackMap {
   const height = grid.length;
   const width = height > 0 ? grid[0].length : 0;

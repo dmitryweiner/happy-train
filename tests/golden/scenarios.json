@@ -15,8 +15,9 @@
   {"name":"L5-solution","level":5,"maxTicks":5400,"expect":"won","actions":[{"tick":242,"x":4,"y":3},{"tick":529,"x":14,"y":3},{"tick":1031,"x":11,"y":6}]},
   {"name":"L5-broken","level":5,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":242,"x":4,"y":3},{"tick":529,"x":14,"y":3}]},
   {"name":"L6-idle","level":6,"maxTicks":3600},
-  {"name":"L6-solution","level":6,"maxTicks":5400,"expect":"won","actions":[{"tick":709,"x":0,"y":5},{"tick":763,"x":0,"y":5},{"tick":1103,"x":8,"y":3}]},
+  {"name":"L6-solution","level":6,"maxTicks":5400,"expect":"won","actions":[{"tick":709,"x":0,"y":5},{"tick":763,"x":0,"y":5},{"tick":1103,"x":8,"y":3}],"legacyDivergence":"Решение legacy разрывает состав (§2.2.5): стрелку (0,5) щёлкают туда и обратно между локомотивом и вагоном. В новом движке вагоны идут по следу, поезд цел и сталкивается с собственным хвостом на петле (8,0)-(9,1)."},
   {"name":"L6-broken","level":6,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":709,"x":0,"y":5},{"tick":763,"x":0,"y":5}]},
+  {"name":"L6-solution-v2","level":6,"maxTicks":5400,"expect":"won","engine":"current","note":"решение для нового движка (состав не разрывается)","actions":[{"tick":709,"x":0,"y":5},{"tick":1020,"x":9,"y":5},{"tick":1127,"x":13,"y":5},{"tick":1892,"x":14,"y":5},{"tick":2286,"x":6,"y":3}]},
   {"name":"L7-idle","level":7,"maxTicks":3600},
   {"name":"L7-solution","level":7,"maxTicks":5400,"expect":"won","actions":[{"tick":626,"x":14,"y":7},{"tick":2025,"x":2,"y":0}]},
   {"name":"L7-broken","level":7,"maxTicks":5400,"note":"решение без последнего клика","actions":[{"tick":626,"x":14,"y":7}]}

@@ -1,5 +1,5 @@
 // Симуляция на движке из src/ (core/world) с тем же интерфейсом, что у legacy-обвязки.
-import { isSwitchCell } from '../../src/core/movement';
+import { isSwitchCell } from '../../src/core/legacy-import';
 import { clickCell, createWorld, stepWorld, type World } from '../../src/core/world';
 import { levels } from '../../src/levels';
 import type { LegacyLevel } from '../../src/types';
@@ -12,8 +12,6 @@ export class CurrentSim {
 
   constructor(levelIndex: number, { customLevel }: { customLevel?: LegacyLevel } = {}) {
     this.world = createWorld(customLevel ?? levels[levelIndex]);
-    // Как в игре: конструктор Game сразу рисует первый кадр, и update получает deltaTime ≈ 0
-    stepWorld(this.world, 0);
   }
 
   get status() {
@@ -54,9 +52,16 @@ export class CurrentSim {
     ];
   }
 
+  // Шаг сценария — кадр длиной dt: симуляция делает столько фиксированных тиков, сколько накопилось
+  private accumulator = 0;
+
   step(dt = DT): void {
     if (this.status !== 'running') return;
-    stepWorld(this.world, dt);
+    this.accumulator += dt;
+    while (this.accumulator >= DT - 1e-9 && this.status === 'running') {
+      stepWorld(this.world);
+      this.accumulator -= DT;
+    }
     this.tick++;
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { CELL_SIZE, CELL_TYPES, DIRECTIONS, type CellType } from '../src/constants';
-import { LEGACY_CELL_CONNECTIONS, legacyGridToTrackMap } from '../src/core/legacy-import';
-import { calculateNextPosition, isSwitchCell } from '../src/core/movement';
+import { createRequire } from 'node:module';
+import { isSwitchCell, LEGACY_CELL_CONNECTIONS, legacyGridToTrackMap } from '../src/core/legacy-import';
 import {
   classifyCell,
   connectionSides,
@@ -86,6 +86,15 @@ describe('validateTrackMap', () => {
     expect(() => tokensToTrackMap([['EW', 'EW'], ['EW']])).toThrow(/row 1 has 1 cells, expected 2/);
   });
 });
+
+// Физика legacy-движка — из замороженной копии (в src/ её больше нет)
+const require = createRequire(import.meta.url);
+const { calculateNextPosition } = require('./golden/legacy/utils.js') as {
+  calculateNextPosition: (
+    cellType: string, cellX: number, cellY: number, pixelX: number, pixelY: number,
+    direction: number, speed: number, deltaTime: number, isStraight: boolean | undefined,
+  ) => { x: number; y: number; direction: number };
+};
 
 // Сверяем таблицу LEGACY_CELL_CONNECTIONS с физикой legacy-движка:
 // въезжаем в клетку с каждой стороны и смотрим, с какой стороны поезд из неё выедет.

@@ -2,12 +2,14 @@
 // CLI для уровней формата v2 (FIXIN-PLAN.md §4).
 //   yarn level validate levels/03.json [...]   — схема, стыковка путей, объекты; код выхода 1 при ошибках
 //   yarn level render levels/03.json           — ASCII-превью поля
+//   yarn level solve levels/03.json            — найти решение (минимум кликов); код выхода 1, если не нашлось
 //   yarn level migrate                         — перегенерировать levels/*.json из legacy-уровней (разово)
 import fs from 'node:fs';
 import path from 'node:path';
 import { compileLevel, formatLevelJson, LevelError } from '../src/core/level-v2';
 import { renderLevelAscii } from '../src/core/level-ascii';
 import { legacyLevelToV2 } from '../src/core/legacy-import';
+import { solveLevel } from '../src/core/solver';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -43,6 +45,24 @@ function render(files: string[]): void {
   }
 }
 
+function solve(files: string[]): void {
+  let failed = false;
+  for (const file of files) {
+    const started = Date.now();
+    const result = solveLevel(compileLevel(readJson(file)).legacy);
+    const seconds = ((Date.now() - started) / 1000).toFixed(1);
+    if (result.actions) {
+      const clicks = result.actions.map(a => `(${a.x},${a.y})@${a.tick}`).join(' ') || 'no clicks needed';
+      console.log(`${file}: solved with ${result.actions.length} click(s), won at tick ${result.wonAtTick}: ${clicks} [${seconds}s, ${result.expanded} states]`);
+      console.log(`  actions: ${JSON.stringify(result.actions)}`);
+    } else {
+      failed = true;
+      console.log(`${file}: no solution found [${seconds}s, ${result.expanded} states]`);
+    }
+  }
+  process.exit(failed ? 1 : 0);
+}
+
 function migrate(): void {
   // Разовая миграция: исходные уровни — замороженная копия legacy levels.js
   const legacy = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tests', 'golden', '__golden__', 'legacy-levels.json'), 'utf8'));
@@ -60,10 +80,13 @@ switch (command) {
   case 'render':
     render(args);
     break;
+  case 'solve':
+    solve(args);
+    break;
   case 'migrate':
     migrate();
     break;
   default:
-    console.log('usage: level validate|render <file.json...> | level migrate');
+    console.log('usage: level validate|render|solve <file.json...> | level migrate');
     process.exit(command ? 1 : 0);
 }

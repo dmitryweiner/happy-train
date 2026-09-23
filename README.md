@@ -83,11 +83,13 @@ Scripts:
 | `yarn build` | type-check + production build to `docs/` |
 | `yarn typecheck` / `yarn lint` | TypeScript / ESLint |
 | `yarn test` | all tests (Vitest) |
-| `yarn test:golden` | golden snapshots: `src/` engine vs recorded legacy behaviour |
-| `yarn test:golden:update` | re-record golden snapshots from the frozen legacy engine |
+| `yarn test:golden` | golden snapshots of the current engine + comparison with recorded legacy behaviour |
+| `yarn test:golden:update` | re-record golden snapshots of the current engine |
+| `yarn test:golden:update-legacy` | re-record golden snapshots of the frozen legacy engine |
 | `yarn test:visual` / `yarn test:visual:update` | visual regression tests / re-create reference images |
 | `yarn level validate levels/*.json` | check levels (format v2): schema, track connectivity, trains |
 | `yarn level render levels/01.json` | ASCII preview of a level |
+| `yarn level solve levels/01.json` | find a solution with the fewest clicks (checks that a level is solvable) |
 | `yarn solve:legacy [level...]` | brute-force solver for levels on the legacy engine |
 
 `package.json` declares `"engines": { "node": ">=22" }` and uses **`canvas` v3**, which ships prebuilt binaries for Node 22 on darwin arm64 (so you usually do not need Homebrew Cairo). If `yarn install` still tries to compile from source and fails, install system libraries then reinstall, for example on macOS:

@@ -15,11 +15,12 @@
     "test": "vitest run",
     "test:unit": "vitest run tests --exclude tests/golden/**",
     "test:golden": "vitest run tests/golden",
-    "test:golden:update": "GOLDEN_ENGINE=legacy UPDATE_GOLDEN=1 vitest run tests/golden/golden.test.ts",
+    "test:golden:update": "UPDATE_GOLDEN=1 vitest run tests/golden/golden.test.ts",
     "test:visual": "vitest run visual-tests",
     "test:visual:update": "rm -rf visual-tests/fixtures && UPDATE_VISUAL=1 vitest run visual-tests",
     "solve:legacy": "node tests/golden/legacy-solve.js",
-    "level": "tsx tools/level.ts"
+    "level": "tsx tools/level.ts",
+    "test:golden:update-legacy": "GOLDEN_ENGINE=legacy UPDATE_GOLDEN=1 vitest run tests/golden/golden.test.ts"
   },
   "jest": {
     "testEnvironment": "node"

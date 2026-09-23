@@ -1,5 +1,5 @@
 import { GRID_HEIGHT, GRID_WIDTH } from '../constants';
-import { isSwitchCell } from '../core/movement';
+import { isSwitchCell } from '../core/legacy-import';
 import { getSwitchState, isSemaphoreAt, type World } from '../core/world';
 import { drawCell, drawSemaphoreCell, drawStationCell, drawSwitchCell, drawTrainPart } from './graphics';
 
