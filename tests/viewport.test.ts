@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { CELL_SIZE, VIEW_ZOOM_MIN, VIEW_ZOOM_MAX, VIEW_ZOOM_WHEEL_SENSITIVITY } from '../src/constants';
-import { clientToGridCell, clampViewZoom, zoomFromWheelDelta, zoomFromPinchRatio, touchPairDistance, buildCanvasViewTransform, computeViewPanBounds, clampViewPanPair } from '../src/ui/viewport';
+import { clientToGridCell, clampViewZoom, zoomFromWheelDelta, zoomFromPinchRatio, touchPairDistance, buildCanvasViewTransform, computeViewPanBounds, clampViewPanPair, panForZoomAround } from '../src/ui/viewport';
 
 describe('clientToGridCell', () => {
   const rect = { left: 100, top: 50, width: 300, height: 200 };
@@ -120,5 +120,18 @@ describe('touchPairDistance', () => {
   test('returns 0 for fewer than two touches', () => {
     expect(touchPairDistance([{ clientX: 0, clientY: 0 }])).toBe(0);
     expect(touchPairDistance(null)).toBe(0);
+  });
+});
+
+describe('panForZoomAround', () => {
+  test('точка под якорем остаётся на месте', () => {
+    const { panX, panY } = panForZoomAround(-50, -20, 1.5, 2, 300, 200);
+    // Точка содержимого под якорем до: (300 - (-50)) / 1.5; после: (300 - panX) / 2 — те же
+    expect((300 - panX) / 2).toBeCloseTo((300 + 50) / 1.5);
+    expect((200 - panY) / 2).toBeCloseTo((200 + 20) / 1.5);
+  });
+
+  test('без изменения масштаба сдвиг не меняется', () => {
+    expect(panForZoomAround(-10, -5, 2, 2, 100, 100)).toEqual({ panX: -10, panY: -5 });
   });
 });

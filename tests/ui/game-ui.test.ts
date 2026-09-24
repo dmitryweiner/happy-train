@@ -296,6 +296,20 @@ describe('Game UI', () => {
       expect(game.world.trains[0][0].speed).toBeGreaterThan(0);
     });
 
+    test('все поезда стоят на закрытых семафорах — цикл останавливается, открытие семафора запускает', async () => {
+      const game = await startGame([levels[2]]);
+      clickCell(game, 4, 2);
+      clickCell(game, 4, 8);
+      runUntil(() => framesRequested() === 0);
+      expect(framesRequested()).toBe(0);
+      expect(game.world.status).toBe('running');
+      expect(game.world.trainStates.every(train => train.speed === 0)).toBe(true);
+      clickCell(game, 4, 2);
+      expect(framesRequested()).toBe(1);
+      frame(30);
+      expect(game.world.trainStates[0].speed).toBeGreaterThan(0);
+    });
+
     test('повторные запуски не плодят параллельные циклы', async () => {
       await startGame();
       pause();
@@ -305,6 +319,43 @@ describe('Game UI', () => {
       expect(framesRequested()).toBeLessThanOrEqual(1);
       frame(3);
       expect(framesRequested()).toBe(1);
+    });
+  });
+
+  // Масштаб клавишами (на телефоне — жест)
+  describe('масштаб клавишами', () => {
+    const key = (value: string, init: KeyboardEventInit = {}) =>
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: value, ...init }));
+
+    test('«+» и «−» меняют масштаб шагом ×1.25 в пределах 100–300%', async () => {
+      const game = await startGame();
+      expect(game.viewZoom).toBe(1);
+      key('-');
+      expect(game.viewZoom).toBe(1);
+      key('+');
+      expect(game.viewZoom).toBeCloseTo(1.25);
+      expect(document.getElementById('game-board-content')?.style.transform).toContain('scale(1.25)');
+      for (let i = 0; i < 10; i++) key('+');
+      expect(game.viewZoom).toBe(3);
+      for (let i = 0; i < 10; i++) key('-');
+      expect(game.viewZoom).toBe(1);
+    });
+
+    test('Ctrl/Cmd + «+» не перехватывается (это масштаб страницы)', async () => {
+      const game = await startGame();
+      key('+', { ctrlKey: true });
+      key('+', { metaKey: true });
+      expect(game.viewZoom).toBe(1);
+    });
+
+    test('клавиши + / = / -', async () => {
+      const game = await startGame();
+      key('+');
+      expect(game.viewZoom).toBeCloseTo(1.25);
+      key('=');
+      expect(game.viewZoom).toBeCloseTo(1.5625);
+      key('-');
+      expect(game.viewZoom).toBeCloseTo(1.25);
     });
   });
 });

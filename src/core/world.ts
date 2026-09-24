@@ -353,3 +353,15 @@ export function stepWorld(world: World): void {
   }
 }
 
+
+// Мир стоит: каждый поезд стоит на закрытом семафоре, поэтому следующий тик ничего не изменит.
+// Сдвинуть его может только игрок (открыть семафор), так что игре не нужно крутить кадры.
+export function isWorldIdle(world: World): boolean {
+  if (world.status !== 'running') return false;
+  return world.trainStates.every(train => {
+    const head = train.segments[train.segments.length - 1];
+    const semaphore = world.semaphoreStates[cellKey(head.x, head.y)];
+    // STOPPED, а не просто скорость 0: в тике, где скорость упала до нуля, поезд ещё DECELERATING
+    return train.state === LOCOMOTIVE_STATES.STOPPED && train.speed === 0 && semaphore !== undefined && !semaphore.isOpen;
+  });
+}

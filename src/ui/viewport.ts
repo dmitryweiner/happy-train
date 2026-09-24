@@ -97,3 +97,23 @@ export function clampViewPanPair(panX: number, panY: number, bounds: PanBounds):
     panY: Math.min(maxPanY, Math.max(minPanY, panY)),
   };
 }
+
+/**
+ * Сдвиг после смены масштаба так, чтобы точка вьюпорта (anchorX, anchorY) показывала то же место поля.
+ * transform: translate(pan) scale(zoom), transform-origin: top left.
+ */
+export function panForZoomAround(
+  panX: number,
+  panY: number,
+  oldZoom: number,
+  newZoom: number,
+  anchorX: number,
+  anchorY: number,
+): { panX: number; panY: number } {
+  if (oldZoom === newZoom) return { panX, panY };
+  const ratio = newZoom / oldZoom;
+  return {
+    panX: anchorX - (anchorX - panX) * ratio,
+    panY: anchorY - (anchorY - panY) * ratio,
+  };
+}

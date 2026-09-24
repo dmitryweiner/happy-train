@@ -63,6 +63,7 @@ export const STORAGE_KEYS = {
 // View zoom (CSS scale on canvas; train logic unchanged)
 export const VIEW_ZOOM_MIN = 1;
 export const VIEW_ZOOM_MAX = 3;
+export const VIEW_ZOOM_STEP = 1.25; // шаг клавиш «+» / «−»
 export const VIEW_ZOOM_WHEEL_SENSITIVITY = 0.0015;
 export const VIEW_PINCH_RATIO_THRESHOLD = 0.04;
 export const VIEW_DRAG_THRESHOLD_PX = 6;
