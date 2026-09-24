@@ -321,4 +321,41 @@ describe('Game UI', () => {
       expect(framesRequested()).toBe(1);
     });
   });
+
+  // Масштаб клавишами (на телефоне — жест)
+  describe('масштаб клавишами', () => {
+    const key = (value: string, init: KeyboardEventInit = {}) =>
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: value, ...init }));
+
+    test('«+» и «−» меняют масштаб шагом ×1.25 в пределах 100–300%', async () => {
+      const game = await startGame();
+      expect(game.viewZoom).toBe(1);
+      key('-');
+      expect(game.viewZoom).toBe(1);
+      key('+');
+      expect(game.viewZoom).toBeCloseTo(1.25);
+      expect(document.getElementById('game-board-content')?.style.transform).toContain('scale(1.25)');
+      for (let i = 0; i < 10; i++) key('+');
+      expect(game.viewZoom).toBe(3);
+      for (let i = 0; i < 10; i++) key('-');
+      expect(game.viewZoom).toBe(1);
+    });
+
+    test('Ctrl/Cmd + «+» не перехватывается (это масштаб страницы)', async () => {
+      const game = await startGame();
+      key('+', { ctrlKey: true });
+      key('+', { metaKey: true });
+      expect(game.viewZoom).toBe(1);
+    });
+
+    test('клавиши + / = / -', async () => {
+      const game = await startGame();
+      key('+');
+      expect(game.viewZoom).toBeCloseTo(1.25);
+      key('=');
+      expect(game.viewZoom).toBeCloseTo(1.5625);
+      key('-');
+      expect(game.viewZoom).toBeCloseTo(1.25);
+    });
+  });
 });

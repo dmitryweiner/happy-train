@@ -7,6 +7,7 @@ import {
   VIEW_PINCH_RATIO_THRESHOLD,
   VIEW_ZOOM_MAX,
   VIEW_ZOOM_MIN,
+  VIEW_ZOOM_STEP,
   VIEW_ZOOM_WHEEL_SENSITIVITY,
 } from '../constants';
 import { clickCell, createWorld, isWorldIdle, stepWorld, TICK_RATE, type World } from '../core/world';
@@ -21,6 +22,7 @@ import {
   clampViewZoom,
   clientToGridCell,
   computeViewPanBounds,
+  panForZoomAround,
   touchPairDistance,
   zoomFromPinchRatio,
   zoomFromWheelDelta,
@@ -152,6 +154,18 @@ export class Game {
     // Мобильная подгонка в styles.css считает масштаб от этих размеров (+ рамка 2px)
     document.documentElement.style.setProperty('--board-w', `${width + 4}px`);
     document.documentElement.style.setProperty('--board-h', `${height + 4}px`);
+  }
+
+  // Масштаб клавишами: относительно центра видимой части поля
+  zoomBy(factor: number): void {
+    const oldZoom = this.viewZoom;
+    const newZoom = clampViewZoom(oldZoom * factor, VIEW_ZOOM_MIN, VIEW_ZOOM_MAX);
+    const viewportWidth = this.boardViewport?.clientWidth || this.canvas.width;
+    const viewportHeight = this.boardViewport?.clientHeight || this.canvas.height;
+    const pan = panForZoomAround(this.viewPanX, this.viewPanY, oldZoom, newZoom, viewportWidth / 2, viewportHeight / 2);
+    this.viewPanX = pan.panX;
+    this.viewPanY = pan.panY;
+    this.setViewZoom(newZoom);
   }
 
   setViewZoom(zoom: number): void {
@@ -454,6 +468,17 @@ export class Game {
       },
       { passive: false }
     );
+
+    // Масштаб клавишами + / = / - (на телефоне — жест)
+    window.addEventListener("keydown", (e) => {
+      // Ctrl/Cmd + «+» — масштаб страницы в браузере, его не перехватываем
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") {
+        this.zoomBy(VIEW_ZOOM_STEP);
+      } else if (e.key === "-" || e.key === "_") {
+        this.zoomBy(1 / VIEW_ZOOM_STEP);
+      }
+    });
 
     window.addEventListener("resize", () => {
       this.applyViewTransform();
