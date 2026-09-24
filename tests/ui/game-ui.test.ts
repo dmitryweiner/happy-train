@@ -296,6 +296,20 @@ describe('Game UI', () => {
       expect(game.world.trains[0][0].speed).toBeGreaterThan(0);
     });
 
+    test('все поезда стоят на закрытых семафорах — цикл останавливается, открытие семафора запускает', async () => {
+      const game = await startGame([levels[2]]);
+      clickCell(game, 4, 2);
+      clickCell(game, 4, 8);
+      runUntil(() => framesRequested() === 0);
+      expect(framesRequested()).toBe(0);
+      expect(game.world.status).toBe('running');
+      expect(game.world.trainStates.every(train => train.speed === 0)).toBe(true);
+      clickCell(game, 4, 2);
+      expect(framesRequested()).toBe(1);
+      frame(30);
+      expect(game.world.trainStates[0].speed).toBeGreaterThan(0);
+    });
+
     test('повторные запуски не плодят параллельные циклы', async () => {
       await startGame();
       pause();

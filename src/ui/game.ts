@@ -9,7 +9,7 @@ import {
   VIEW_ZOOM_MIN,
   VIEW_ZOOM_WHEEL_SENSITIVITY,
 } from '../constants';
-import { clickCell, createWorld, stepWorld, TICK_RATE, type World } from '../core/world';
+import { clickCell, createWorld, isWorldIdle, stepWorld, TICK_RATE, type World } from '../core/world';
 import { generateBackground } from '../render/graphics';
 import { WorldRenderer } from '../render/world-renderer';
 import { levels } from '../levels';
@@ -473,7 +473,8 @@ export class Game {
     }
 
     this.draw();
-    this.looping = !this.isPaused && this.world.status === 'running';
+    // Мир стоит (все поезда на закрытых семафорах) — кадры одинаковые, перезапустит клик по семафору
+    this.looping = !this.isPaused && this.world.status === 'running' && !isWorldIdle(this.world);
     if (this.looping) {
       this.requestFrame();
     }
